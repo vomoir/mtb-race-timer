@@ -1,55 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
+import { Play, RefreshCw, CheckCircle } from "lucide-react";
+import { useRaceStore } from "./raceStore";
+import { formatTime } from "./utils"; // adjust imports
 
-const Starter = ({
-  user,
-  raceId,
-  formatTime,
-  serverTimestamp,
-  getLocalBackup,
-  saveToLocalBackup,
-  addDoc,
-}) => {
-  const [raceNumber, setRaceNumber] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [lastStarted, setLastStarted] = useState(null);
-  const [localLogs, setLocalLogs] = useState(getLocalBackup("starts"));
+const StarterComponent = ({ user }) => {
+  const {
+    raceNumber,
+    raceId,
+    loading,
+    lastStarted,
+    localLogs,
+    setRaceNumber,
+    handleStart,
+  } = useRaceStore();
 
-  const handleStart = async (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
-    if (!raceNumber.trim() || !user) return;
-
-    setLoading(true);
-    const num = raceNumber.trim();
-    const now = new Date();
-
-    const raceData = {
-      raceId: raceId,
-      raceNumber: num,
-      startTime: now.toISOString(),
-      status: "ON_TRACK",
-      startedBy: user.uid,
-      finishTime: null,
-      raceTime: null,
-      timestamp: serverTimestamp(),
-    };
-
-    try {
-      saveToLocalBackup("starts", raceData);
-      setLocalLogs(getLocalBackup("starts"));
-
-      await addDoc(
-        collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-        raceData
-      );
-
-      setLastStarted({ number: num, time: now });
-      setRaceNumber("");
-    } catch (error) {
-      console.error("Error starting rider:", error);
-      alert("Error saving data. Checked local storage.");
-    } finally {
-      setLoading(false);
-    }
+    handleStart(user, raceId);
   };
 
   return (
@@ -59,8 +26,7 @@ const Starter = ({
           <Play className="text-green-600" size={20} />
           Start Rider
         </h2>
-
-        <form onSubmit={handleStart} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-500 mb-1">
               Race Number
@@ -76,7 +42,6 @@ const Starter = ({
               autoFocus
             />
           </div>
-
           <button
             type="submit"
             disabled={!raceNumber || loading}
@@ -85,7 +50,6 @@ const Starter = ({
             {loading ? <RefreshCw className="animate-spin" /> : "START RIDER"}
           </button>
         </form>
-
         {lastStarted && (
           <div className="mt-6 p-4 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-3">
@@ -102,7 +66,6 @@ const Starter = ({
           </div>
         )}
       </div>
-
       <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
           Local Backup Log (Last 5)
@@ -124,4 +87,5 @@ const Starter = ({
     </div>
   );
 };
-export default Starter;
+
+export default StarterComponent;

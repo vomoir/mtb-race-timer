@@ -1,26 +1,110 @@
-import React from "react";
-import { List, Clock, RefreshCw, Timer } from "lucide-react";
-import { useRaceStore } from "./raceStore";
-import { formatTime, calculateRaceTime } from "./utils"; // adjust imports
+import React, { useState, useMemo } from "react";
 
-const FinishLine = ({ user }) => {
-  const {
-    raceId,
-    finishing,
-    manualNumber,
-    finishLogs,
-    showSoloStart,
-    soloNumber,
-    setManualNumber,
-    setSoloNumber,
-    toggleSoloStart,
-    handleSoloStart,
-    handleFinish,
-    handleManualFinish,
-  } = useRaceStore();
+const FinishLine = ({ user, riders, raceId }) => {
+  const [finishing, setFinishing] = useState(null);
+  const [manualNumber, setManualNumber] = useState("");
+  const [localLogs, setLocalLogs] = useState(getLocalBackup("finishes"));
+  const [showSoloStart, setShowSoloStart] = useState(false); // Toggle for Solo/Offline mode
+  const [soloNumber, setSoloNumber] = useState("");
 
-  const ridersOnTrack = useRaceStore((s) => s.getRidersOnTrack());
-  const finishedRiders = useRaceStore((s) => s.getFinishedRiders());
+  const ridersOnTrack = useMemo(() => {
+    return riders
+      .filter((r) => r.status === "ON_TRACK")
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  }, [riders]);
+
+  const finishedRiders = useMemo(() => {
+    return riders
+      .filter((r) => r.status === "FINISHED")
+      .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime));
+  }, [riders]);
+
+  // Handle Solo Start (Manual Start)
+  const handleSoloStart = async (e) => {
+    e.preventDefault();
+    if (!soloNumber.trim() || !user) return;
+
+    const num = soloNumber.trim();
+    const now = new Date();
+
+    const raceData = {
+      raceId: raceId,
+      raceNumber: num,
+      startTime: now.toISOString(),
+      status: "ON_TRACK",
+      startedBy: user.uid,
+      finishTime: null,
+      raceTime: null,
+      timestamp: serverTimestamp(),
+    };
+
+    try {
+      saveToLocalBackup("starts", raceData);
+      await addDoc(
+        collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
+        raceData
+      );
+      setSoloNumber("");
+      setShowSoloStart(false);
+    } catch (error) {
+      console.error("Error starting rider:", error);
+    }
+  };
+
+  const handleFinish = async (rider) => {
+    if (!user) return;
+    setFinishing(rider.id);
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const calculatedRaceTime = calculateRaceTime(rider.startTime, nowIso);
+
+    const finishData = {
+      status: "FINISHED",
+      finishTime: nowIso,
+      finishedBy: user.uid,
+      raceTime: calculatedRaceTime,
+    };
+
+    try {
+      saveToLocalBackup("finishes", { ...rider, ...finishData });
+      setLocalLogs(getLocalBackup("finishes"));
+      const docRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "mtb_riders",
+        rider.id
+      );
+      await updateDoc(docRef, finishData);
+    } catch (error) {
+      console.error("Error finishing rider:", error);
+    } finally {
+      setFinishing(null);
+      setManualNumber("");
+    }
+  };
+
+  const handleManualFinish = (e) => {
+    e.preventDefault();
+    const num = manualNumber.trim();
+    if (!num) return;
+    const rider = ridersOnTrack.find((r) => r.raceNumber === num);
+    if (rider) {
+      handleFinish(rider);
+    } else {
+      alert(`Rider #${num} not found on track for Race ID: ${raceId}!`);
+    }
+  };
+
+  const getElapsedTime = (startTime) => {
+    const start = new Date(startTime);
+    const now = new Date();
+    const diffMs = now - start;
+    const minutes = Math.floor(diffMs / 60000);
+    return `${minutes}m`;
+  };
 
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
@@ -30,7 +114,7 @@ const FinishLine = ({ user }) => {
           Single User Mode
         </span>
         <button
-          onClick={() => toggleSoloStart(!showSoloStart)}
+          onClick={() => setShowSoloStart(!showSoloStart)}
           className={`text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
             showSoloStart
               ? "bg-slate-300 text-slate-700"
@@ -138,13 +222,13 @@ const FinishLine = ({ user }) => {
                   <div className="text-xs text-slate-500 flex items-center gap-1">
                     <Clock size={12} /> Started: {formatTime(rider.startTime)}
                     <span className="text-blue-600 font-medium ml-1">
-                      {rider.elapsedTime}
+                      ({getElapsedTime(rider.startTime)})
                     </span>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => handleFinish(user, raceId, rider)}
+                  onClick={() => handleFinish(rider)}
                   disabled={finishing === rider.id}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-4 rounded-lg shadow-md active:scale-95 transition-all"
                 >
@@ -199,7 +283,7 @@ const FinishLine = ({ user }) => {
           Local Backup Log (Finishes)
         </h3>
         <div className="space-y-2">
-          {finishLogs.slice(0, 5).map((log, i) => (
+          {localLogs.slice(0, 5).map((log, i) => (
             <div
               key={i}
               className="flex justify-between items-center text-sm text-slate-600 border-b border-slate-200 pb-1 last:border-0"
