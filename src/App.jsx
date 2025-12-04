@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useRaceStore } from "./store/raceStore";
-// import { getAnalytics } from "firebase/analytics";
-// import { auth } from "../modules/firebase";
+import LoginScreen from "./components/LoginScreen";
+import Header from "./components/Header";
+import StarterComponent from "./components/Starter";
+import FinishLineComponent from "./components/FinishLine";
+import ResultsComponent from "./components/Results";
 
-// const analytics = getAnalytics(app);
 
 // --- Helpers ---
 export default function App() {
@@ -14,17 +16,15 @@ export default function App() {
     setIsOnline,
     subscribeRiders,
     clearRiders,
-    tick,
   } = useRaceStore();
   const [user] = useState(null);
   const initAuthListener = useRaceStore((s) => s.initAuthListener);
   const initAuth = useRaceStore((s) => s.initAuth);
+  const tick = useRaceStore((s) => s.tick);
 
   useEffect(() => {
     initAuthListener();
   }, [initAuthListener]);
-
-  const [loadingAuth] = useState(true);
 
   // Monitor Connectivity
   useEffect(() => {
@@ -59,14 +59,6 @@ export default function App() {
     const interval = setInterval(() => tick(), 5000);
     return () => clearInterval(interval);
   }, [tick]);
-
-  if (loadingAuth) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-900 text-white">
-        Loading Timing System...
-      </div>
-    );
-  }
 
   // SHOW LOGIN SCREEN IF NO RACE ID
   if (!raceId) {

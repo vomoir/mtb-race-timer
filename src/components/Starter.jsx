@@ -1,7 +1,7 @@
 import React from "react";
 import { Play, RefreshCw, CheckCircle } from "lucide-react";
-import { useRaceStore } from "./raceStore";
-import { formatTime } from "./utils"; // adjust imports
+import { useRaceStore } from "../store/raceStore"; // Import the hook
+import { formatTime } from "../store/utils"; // adjust imports
 
 const StarterComponent = ({ user }) => {
   const {

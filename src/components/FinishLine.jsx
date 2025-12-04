@@ -1,7 +1,9 @@
 import React from "react";
-import { List, Clock, RefreshCw, Timer } from "lucide-react";
-import { useRaceStore } from "./raceStore";
-import { formatTime, calculateRaceTime } from "./utils"; // adjust imports
+import { List, Clock, RefreshCw, Timer, Zap, Flag } from "lucide-react";
+import { useRaceStore } from "../store/raceStore"; // Import the hook
+import { useRiderLists } from "../hooks/useRiderLists";
+
+import { formatTime, calculateRaceTime } from "../store/utils"; // adjust imports
 
 const FinishLine = ({ user }) => {
   const {
@@ -19,9 +21,7 @@ const FinishLine = ({ user }) => {
     handleManualFinish,
   } = useRaceStore();
 
-  const ridersOnTrack = useRaceStore((s) => s.getRidersOnTrack());
-  const finishedRiders = useRaceStore((s) => s.getFinishedRiders());
-
+  const { ridersOnTrack, finishedRiders } = useRiderLists();
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* SOLO START TOGGLE */}

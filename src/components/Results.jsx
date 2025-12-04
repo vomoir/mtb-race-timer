@@ -1,6 +1,21 @@
 import React, { useMemo } from "react";
 
-const Results = ({ riders, raceId, calculateRaceTime }) => {
+const Results = () => {
+  const {
+    raceId,
+    finishing,
+    manualNumber,
+    finishLogs,
+    showSoloStart,
+    soloNumber,
+    setManualNumber,
+    setSoloNumber,
+    toggleSoloStart,
+    handleSoloStart,
+    handleFinish,
+    handleManualFinish,
+  } = useRaceStore();
+  
   const sortedResults = useMemo(() => {
     return riders
       .filter((r) => r.status === "FINISHED" && r.finishTime && r.startTime)

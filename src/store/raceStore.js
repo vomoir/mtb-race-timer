@@ -87,11 +87,22 @@ export const useRaceStore = create((set, get) => ({
   raceId: "",
   setRaceId: (id) => set({ raceId: id }),
 
+  now: new Date(), // reference time
+  tick: () => set({ now: new Date() }),
+
   isOnline: navigator.onLine,
   setIsOnline: (status) => set({ isOnline: status }),
   riders: [],
   unsubscribeRiders: null,
-  setRiders: (riders) => set({ riders }),
+  setRiders: (riders) =>
+    set({
+      riders,
+      finishedRiders: riders
+        .filter((r) => r.status === "FINISHED")
+        .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime)),
+    }),
+  finishedRiders: [],
+
   subscribeRiders: (user, raceId) => {
     if (!user || !raceId) return;
 
@@ -130,8 +141,7 @@ export const useRaceStore = create((set, get) => ({
     set({ riders: [], unsubscribeRiders: null });
   },
 
-  // --- Derived selectors ---
-  getRidersOnTrack: () => {
+  ridersOnTrack: () => {
     const { riders, now } = get();
     return riders
       .filter((r) => r.status === "ON_TRACK")
@@ -142,12 +152,24 @@ export const useRaceStore = create((set, get) => ({
       }));
   },
 
-  getFinishedRiders: () => {
-    const { riders } = get();
-    return riders
-      .filter((r) => r.status === "FINISHED")
-      .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime));
-  },
+  // --- Derived selectors ---
+  // getRidersOnTrack: () => {
+  //   const { riders, now } = get();
+  //   return riders
+  //     .filter((r) => r.status === "ON_TRACK")
+  //     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+  //     .map((r) => ({
+  //       ...r,
+  //       elapsedTime: formatElapsed(r.startTime, now),
+  //     }));
+  // },
+
+  // getFinishedRiders: () => {
+  //   const { riders } = get();
+  //   return riders
+  //     .filter((r) => r.status === "FINISHED")
+  //     .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime));
+  // },
 
   setRaceNumber: (num) => set({ raceNumber: num }),
   setLoading: (val) => set({ loading: val }),
@@ -280,3 +302,10 @@ export const useRaceStore = create((set, get) => ({
     }
   },
 }));
+
+// Debug helper: call this in devtools or anywhere
+export const debugRaceStore = () => {
+  const state = useRaceStore.getState();
+  console.log("RaceStore state:", state);
+  return state;
+};

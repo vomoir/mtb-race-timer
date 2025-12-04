@@ -40,3 +40,32 @@ export const getLocalBackup = (type) => {
     return [];
   }
 };
+
+export const formatTime = (dateObj) => {
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/service-worker.js")
+        .then((reg) => console.log("Service Worker Registered"))
+        .catch((err) => console.log("Service Worker Failed", err));
+    });
+  }
+  if (!dateObj) return "--:--:--";
+  const d = new Date(dateObj);
+  return d.toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    fractionalSecondDigits: 2,
+  });
+};
+
+export const formatElapsed = (startTime, now) => {
+  if (!startTime) return null;
+  const start = new Date(startTime);
+  const diffMs = now - start;
+  const minutes = Math.floor(diffMs / 60000);
+  const seconds = Math.floor((diffMs % 60000) / 1000);
+  return `${minutes}m ${seconds}s`;
+};
