@@ -1,11 +1,15 @@
 import React from "react";
 import { useRaceStore } from "../store/raceStore";
-import { Clock, Wifi, Hash, Play, Flag, Trophy } from "lucide-react";
+import { Clock, Wifi, Hash, Play, Flag, Trophy, File } from "lucide-react";
 
 const Header = () => {
   // Grab everything from the store
   const { activeTab, setActiveTab, raceId, setRaceId, isOnline, logout } =
     useRaceStore();
+
+  // const now = useRaceStore((state) => state.now);
+  // const riders = useRaceStore((state) => state.riders);
+  // const activeCount = riders.length > 0;
 
   const handleLogout = () => {
     setRaceId(""); // This effectively logs the user out of the session
@@ -48,6 +52,16 @@ const Header = () => {
       </div>
 
       <div className="flex bg-slate-800 rounded-lg p-1 max-w-2xl mx-auto overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("import")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all font-semibold whitespace-nowrap ${
+            activeTab === "import"
+              ? "bg-green-600 text-white shadow-md"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <File size={18} /> Import Riders
+        </button>
         <button
           onClick={() => setActiveTab("starter")}
           className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all font-semibold whitespace-nowrap ${

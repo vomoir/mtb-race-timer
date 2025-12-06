@@ -1,27 +1,64 @@
-import React from "react";
-import { List, Clock, RefreshCw, Timer, Zap, Flag } from "lucide-react";
+import React, { useState } from "react";
+import {
+  List,
+  Clock,
+  RefreshCw,
+  Timer,
+  Zap,
+  Flag,
+  Save,
+  Trash2,
+} from "lucide-react";
+import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { useRiderLists } from "../hooks/useRiderLists";
 
 import { formatTime, calculateRaceTime } from "../store/utils"; // adjust imports
 
-const FinishLine = ({ user }) => {
+const FinishLine = () => {
   const {
-    raceId,
     finishing,
-    manualNumber,
     finishLogs,
     showSoloStart,
     soloNumber,
-    setManualNumber,
     setSoloNumber,
     toggleSoloStart,
     handleSoloStart,
     handleFinish,
-    handleManualFinish,
   } = useRaceStore();
 
+  const [pendingFinishes, setPendingFinishes] = useState([]);
   const { ridersOnTrack, finishedRiders } = useRiderLists();
+  const handleCapture = () => {
+    const now = new Date();
+    setPendingFinishes((prev) => [
+      {
+        id: crypto.randomUUID(),
+        timestamp: now,
+        displayTime: now.toLocaleTimeString("en-US", { hour12: false }),
+        riderNumber: "",
+      },
+      ...prev,
+    ]);
+  };
+
+  const handleSave = (rider) => {
+    if (!rider.riderNumber) return;
+    // Check if rider is actually on track
+    const isOnTrack = ridersOnTrack.some(
+      (r) => r.riderNumber === rider.riderNumber
+    );
+
+    if (isOnTrack) {
+      handleFinish(rider);
+      setPendingFinishes((prev) =>
+        prev.filter((p) => p.id !== rider.riderNumber)
+      );
+    } else {
+      alert(`Rider #${rider.riderNumber} is not currently on track!`);
+    }
+  };
+
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* SOLO START TOGGLE */}
@@ -46,6 +83,69 @@ const FinishLine = ({ user }) => {
           )}
         </button>
       </div>
+      {/* Capture finish Section */}
+      <Card className="flex flex-col h-[500px] border-l-4 border-l-red-600">
+        <div className="p-4 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Flag className="text-red-600" size={24} />
+            Finish Line
+          </h2>
+        </div>
+        <div className="p-4">
+          <button
+            onClick={handleCapture}
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2"
+          >
+            <Timer size={32} className="text-white" />
+            <span className="text-xl font-black uppercase tracking-widest">
+              Capture Finish
+            </span>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+          {pendingFinishes.map((item, index) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 p-2 rounded-lg border-2 bg-red-50 border-red-100"
+            >
+              <div className="bg-slate-800 text-white font-mono rounded px-2 py-1 font-bold">
+                {item.displayTime}
+              </div>
+              <input
+                autoFocus={index === 0}
+                value={item.riderNumber}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPendingFinishes((prev) =>
+                    prev.map((p) =>
+                      p.id === item.id ? { ...p, riderNumber: val } : p
+                    )
+                  );
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSave(item)}
+                placeholder="#"
+                className="flex-1 w-12 font-bold p-1 text-center border border-slate-300 rounded"
+              />
+              <button
+                onClick={() => handleSave(item)}
+                className="p-1.5 rounded text-white bg-emerald-500"
+              >
+                <Save size={18} />
+              </button>
+              <button
+                onClick={() =>
+                  setPendingFinishes((prev) =>
+                    prev.filter((p) => p.id !== item.id)
+                  )
+                }
+                className="p-1.5 rounded bg-slate-200 text-slate-500"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       {/* SOLO START PANEL */}
       {showSoloStart && (
@@ -55,7 +155,7 @@ const FinishLine = ({ user }) => {
           </h3>
           <form onSubmit={handleSoloStart} className="flex gap-3">
             <input
-              type="number"
+              type="riderNumber"
               pattern="[0-9]*"
               inputMode="numeric"
               value={soloNumber}
@@ -79,33 +179,6 @@ const FinishLine = ({ user }) => {
         </div>
       )}
 
-      {/* MANUAL FINISH SECTION */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Flag className="text-red-600" size={20} />
-          Manual Finish
-        </h2>
-
-        <form onSubmit={handleManualFinish} className="flex gap-3">
-          <input
-            type="number"
-            pattern="[0-9]*"
-            inputMode="numeric"
-            value={manualNumber}
-            onChange={(e) => setManualNumber(e.target.value)}
-            className="flex-1 text-2xl font-bold p-3 text-center border-2 border-slate-300 rounded-lg focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none transition-all placeholder:text-slate-200"
-            placeholder="#"
-          />
-          <button
-            type="submit"
-            disabled={!manualNumber || finishing}
-            className="bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-6 rounded-lg shadow-md active:scale-95 transition-all flex items-center gap-2"
-          >
-            {finishing ? <RefreshCw className="animate-spin" /> : "FINISH"}
-          </button>
-        </form>
-      </div>
-
       {/* ON TRACK LIST */}
       <div>
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
@@ -128,12 +201,12 @@ const FinishLine = ({ user }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {ridersOnTrack.map((rider) => (
               <div
-                key={rider.id}
+                key={rider.riderNumber}
                 className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex justify-between items-center hover:border-blue-300 transition-colors"
               >
                 <div>
                   <div className="text-3xl font-black text-slate-800">
-                    #{rider.raceNumber}
+                    #{rider.riderNumber}
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-1">
                     <Clock size={12} /> Started: {formatTime(rider.startTime)}
@@ -144,11 +217,11 @@ const FinishLine = ({ user }) => {
                 </div>
 
                 <button
-                  onClick={() => handleFinish(user, raceId, rider)}
-                  disabled={finishing === rider.id}
+                  onClick={() => handleSave(rider)}
+                  disabled={finishing === rider.riderNumber}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-4 rounded-lg shadow-md active:scale-95 transition-all"
                 >
-                  {finishing === rider.id ? (
+                  {finishing === rider.riderNumber ? (
                     <RefreshCw className="animate-spin" />
                   ) : (
                     "FINISH"
@@ -169,7 +242,7 @@ const FinishLine = ({ user }) => {
           <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
             {finishedRiders.slice(0, 5).map((rider) => (
               <div
-                key={rider.id}
+                key={rider.riderNumber}
                 className="p-3 border-b border-slate-200 last:border-0 flex justify-between items-center bg-white"
               >
                 <div className="flex items-center gap-3">

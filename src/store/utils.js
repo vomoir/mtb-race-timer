@@ -60,3 +60,13 @@ export const getLocalBackup = (type) => {
     return [];
   }
 };
+
+export const formatDuration = (ms) => {
+  if (ms === null || ms === undefined) return "--:--.--";
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const centis = Math.floor((ms % 1000) / 10);
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}.${centis.toString().padStart(2, "0")}`;
+};

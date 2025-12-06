@@ -128,12 +128,17 @@ export const useRaceStore = create((set, get) => ({
   setLoading: (val) => set({ loading: val }),
 
   handleStart: async (user, raceId) => {
-    const { raceNumber } = get();
+    const { raceNumber, riders } = get();
     if (!raceNumber.trim()) return;
 
     set({ loading: true });
     const num = raceNumber.trim();
     const now = new Date();
+    set({
+      riders: riders.map((r) =>
+        r.riderNumber === num ? { ...r, status: "ON_TRACK", startTime: now } : r
+      ),
+    });
 
     const raceData = {
       raceId,
@@ -156,7 +161,7 @@ export const useRaceStore = create((set, get) => ({
       );
 
       set({
-        lastStarted: { number: num, time: now },
+        lastStarted: { riderNumber: num, time: now },
         raceNumber: "",
       });
     } catch (error) {
@@ -185,8 +190,8 @@ export const useRaceStore = create((set, get) => ({
             id: doc.id,
             ...data,
             // 3. CRITICAL: Handle Field Mapping
-            // Your handleStart saves "raceNumber", but your UI might expect "number"
-            number: data.raceNumber || data.number,
+            // Your handleStart saves "raceNumber", but your UI might expect "riderNumber"
+            riderNumber: data.raceNumber || data.riderNumber,
             // Ensure dates are actual Date objects for math in your hook
             startTime: data.startTime ? new Date(data.startTime) : null,
             finishTime: data.finishTime ? new Date(data.finishTime) : null,
@@ -207,12 +212,9 @@ export const useRaceStore = create((set, get) => ({
 
   // Finish state
   finishing: null,
-  manualNumber: "",
   finishLogs: getLocalBackup("finishes"),
   showSoloStart: false,
   soloNumber: "",
-
-  setManualNumber: (num) => set({ manualNumber: num }),
   setSoloNumber: (num) => set({ soloNumber: num }),
   toggleSoloStart: (val) => set({ showSoloStart: val }),
 
@@ -246,9 +248,9 @@ export const useRaceStore = create((set, get) => ({
     }
   },
 
-  handleFinish: async (user, raceId, rider) => {
-    if (!user) return;
-    set({ finishing: rider.id });
+  handleFinish: async (rider) => {
+    if (!rider) return;
+    set({ finishing: rider.riderNumber });
     const now = new Date();
     const nowIso = now.toISOString();
     const calculatedRaceTime = calculateRaceTime(rider.startTime, nowIso);
@@ -256,7 +258,7 @@ export const useRaceStore = create((set, get) => ({
     const finishData = {
       status: "FINISHED",
       finishTime: nowIso,
-      finishedBy: user.uid,
+      // finishedBy: user.uid,
       raceTime: calculatedRaceTime,
     };
 
@@ -271,7 +273,7 @@ export const useRaceStore = create((set, get) => ({
         "public",
         "data",
         "mtb_riders",
-        rider.id
+        rider.riderNumber
       );
       await updateDoc(docRef, finishData);
     } catch (error) {

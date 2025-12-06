@@ -139,7 +139,7 @@ const FinishLine = ({ user, riders, raceId }) => {
           </h3>
           <form onSubmit={handleSoloStart} className="flex gap-3">
             <input
-              type="number"
+              type="riderNumber"
               pattern="[0-9]*"
               inputMode="numeric"
               value={soloNumber}
@@ -172,7 +172,7 @@ const FinishLine = ({ user, riders, raceId }) => {
 
         <form onSubmit={handleManualFinish} className="flex gap-3">
           <input
-            type="number"
+            type="riderNumber"
             pattern="[0-9]*"
             inputMode="numeric"
             value={manualNumber}

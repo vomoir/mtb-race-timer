@@ -3,7 +3,8 @@ import { useMemo } from "react";
 import { useRaceStore } from "../store/raceStore";
 
 export function useRiderLists() {
-  const { riders, now } = useRaceStore();
+  const riders = useRaceStore((state) => state.riders);
+  const now = useRaceStore((state) => state.now);
 
   const ridersOnTrack = useMemo(() => {
     return riders
@@ -18,7 +19,7 @@ export function useRiderLists() {
   const finishedRiders = useMemo(() => {
     return riders
       .filter((r) => r.status === "FINISHED")
-      .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime));
+      .sort((a, b) => new Date(a.totalTime) - new Date(b.totalTime));
   }, [riders]);
 
   return { ridersOnTrack, finishedRiders };
@@ -26,7 +27,12 @@ export function useRiderLists() {
 
 function formatElapsed(startTime, now) {
   if (!startTime) return null;
-  const diffMs = now - new Date(startTime);
+  const start = new Date(startTime);
+  const diffMs = now - start;
+
+  // Prevent negative time if clock skew
+  if (diffMs < 0) return "0m 0s";
+
   const minutes = Math.floor(diffMs / 60000);
   const seconds = Math.floor((diffMs % 60000) / 1000);
   return `${minutes}m ${seconds}s`;

@@ -50,13 +50,13 @@ const RaceProvider = ({ children }) => {
   };
 
   // Simulates handleStart
-  const startRider = (number) => {
+  const startRider = (riderNumber) => {
     setLoading(true);
     const startTime = new Date();
 
     setRiders((prev) =>
       prev.map((r) => {
-        if (r.number === number) {
+        if (r.riderNumber === riderNumber) {
           return {
             ...r,
             status: "ON_TRACK", // UPPERCASE to match hook
@@ -70,13 +70,13 @@ const RaceProvider = ({ children }) => {
   };
 
   // Simulates handleFinish
-  const finishRider = (number, finishTime) => {
-    // If finishTime is a string or number, convert to Date, else keep as Date
+  const finishRider = (riderNumber, finishTime) => {
+    // If finishTime is a string or riderNumber, convert to Date, else keep as Date
     const fTime = new Date(finishTime);
 
     setRiders((prev) =>
       prev.map((r) => {
-        if (r.number === number.toString()) {
+        if (r.riderNumber === riderNumber.toString()) {
           const duration = fTime - new Date(r.startTime);
           return {
             ...r,
@@ -240,12 +240,12 @@ const RiderImporter = () => {
           if (
             index === 0 &&
             isNaN(parts[0]) &&
-            parts[0].toLowerCase().includes("number")
+            parts[0].toLowerCase().includes("riderNumber")
           )
             return;
           if (parts[0]) {
             newRiders.push({
-              number: parts[0],
+              riderNumber: parts[0],
               name: parts[1] || "Unknown Rider",
               category: parts[2] || "Open",
               status: "WAITING", // INITIAL STATE
@@ -264,7 +264,7 @@ const RiderImporter = () => {
   const loadDemoData = () => {
     const demoRiders = [
       {
-        number: "101",
+        riderNumber: "101",
         name: "Sam Hill",
         category: "Elite",
         status: "WAITING",
@@ -273,7 +273,7 @@ const RiderImporter = () => {
         totalTime: null,
       },
       {
-        number: "102",
+        riderNumber: "102",
         name: "Greg Minnaar",
         category: "Elite",
         status: "WAITING",
@@ -282,7 +282,7 @@ const RiderImporter = () => {
         totalTime: null,
       },
       {
-        number: "103",
+        riderNumber: "103",
         name: "Rachel Atherton",
         category: "Elite",
         status: "WAITING",
@@ -291,7 +291,7 @@ const RiderImporter = () => {
         totalTime: null,
       },
       {
-        number: "201",
+        riderNumber: "201",
         name: "Jackson Goldstone",
         category: "Junior",
         status: "WAITING",
@@ -354,7 +354,7 @@ const Starter = () => {
 
   const filtered = waitingRiders.filter(
     (r) =>
-      r.number.includes(searchTerm) ||
+      r.riderNumber.includes(searchTerm) ||
       r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -385,12 +385,12 @@ const Starter = () => {
       <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-50/30">
         {filtered.map((rider) => (
           <div
-            key={rider.number}
+            key={rider.riderNumber}
             className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-200"
           >
             <div className="flex items-center gap-3">
               <div className="bg-slate-100 text-slate-700 font-mono font-bold w-10 h-10 flex items-center justify-center rounded-lg">
-                {rider.number}
+                {rider.riderNumber}
               </div>
               <div>
                 <div className="font-bold text-slate-800">{rider.name}</div>
@@ -398,7 +398,7 @@ const Starter = () => {
               </div>
             </div>
             <button
-              onClick={() => startRider(rider.number)}
+              onClick={() => startRider(rider.riderNumber)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg font-bold text-xs uppercase flex items-center gap-1"
             >
               GO <ArrowRight size={14} />
@@ -433,7 +433,9 @@ const FinishLine = () => {
   const handleSave = (item) => {
     if (!item.riderNumber) return;
     // Check if rider is actually on track
-    const isOnTrack = ridersOnTrack.some((r) => r.number === item.riderNumber);
+    const isOnTrack = ridersOnTrack.some(
+      (r) => r.riderNumber === item.riderNumber
+    );
 
     if (isOnTrack) {
       finishRider(item.riderNumber, item.timestamp);
@@ -524,10 +526,10 @@ const Results = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {ridersOnTrack.map((r) => (
             <div
-              key={r.number}
+              key={r.riderNumber}
               className="bg-white p-2 rounded border border-blue-200 shadow-sm flex flex-col items-center"
             >
-              <span className="font-bold text-blue-900">#{r.number}</span>
+              <span className="font-bold text-blue-900">#{r.riderNumber}</span>
               <span className="text-xs font-mono text-blue-500">
                 {r.elapsedTime}
               </span>
@@ -561,14 +563,14 @@ const Results = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {finishedRiders.map((rider, idx) => (
-                <tr key={rider.number} className="hover:bg-slate-50">
+                <tr key={rider.riderNumber} className="hover:bg-slate-50">
                   <td className="p-3 text-center font-bold text-slate-500">
                     {idx + 1}
                   </td>
                   <td className="p-3">
                     <div className="font-bold text-slate-800">{rider.name}</div>
                     <div className="text-xs text-slate-500">
-                      #{rider.number} • {rider.category}
+                      #{rider.riderNumber} • {rider.category}
                     </div>
                   </td>
                   <td className="p-3 text-right font-mono text-base font-bold text-slate-800">

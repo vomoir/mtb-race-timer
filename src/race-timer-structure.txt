@@ -1,26 +1,26 @@
 Folder PATH listing for volume OS
-Volume serial number is 461D-F93E
+Volume serial riderNumber is 461D-F93E
 C:.
-¦   App.css
-¦   App.jsx
-¦   index.css
-¦   main.jsx¦   
+ï¿½   App.css
+ï¿½   App.jsx
+ï¿½   index.css
+ï¿½   main.jsxï¿½   
 +---assets
-¦       react.svg
-¦       
+ï¿½       react.svg
+ï¿½       
 +---components
-¦       FinishLine.jsx
-¦       Header.jsx
-¦       LoginScreen.jsx
-¦       Results.jsx
-¦       Starter.jsx
-¦       
+ï¿½       FinishLine.jsx
+ï¿½       Header.jsx
+ï¿½       LoginScreen.jsx
+ï¿½       Results.jsx
+ï¿½       Starter.jsx
+ï¿½       
 +---hooks
-¦       useRiderLists.js
-¦       
+ï¿½       useRiderLists.js
+ï¿½       
 +---modules
-¦       firebase.js
-¦       
+ï¿½       firebase.js
+ï¿½       
 +---store
         raceStore.js
         utils.js
