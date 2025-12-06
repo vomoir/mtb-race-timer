@@ -1,0 +1,27 @@
+Folder PATH listing for volume OS
+Volume serial number is 461D-F93E
+C:.
+¦   App.css
+¦   App.jsx
+¦   index.css
+¦   main.jsx¦   
++---assets
+¦       react.svg
+¦       
++---components
+¦       FinishLine.jsx
+¦       Header.jsx
+¦       LoginScreen.jsx
+¦       Results.jsx
+¦       Starter.jsx
+¦       
++---hooks
+¦       useRiderLists.js
+¦       
++---modules
+¦       firebase.js
+¦       
++---store
+        raceStore.js
+        utils.js
+       

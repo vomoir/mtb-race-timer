@@ -7,6 +7,8 @@ import {
   updateDoc,
   onSnapshot,
   serverTimestamp,
+  query,
+  orderBy,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -21,15 +23,6 @@ import { db, appId, auth } from "../modules/firebase";
 
 import { getLocalBackup, saveToLocalBackup } from "./utils.js";
 import { calculateRaceTime } from "./utils.js"; // adjust imports
-
-function formatElapsed(startTime, now) {
-  if (!startTime) return null;
-  const start = new Date(startTime);
-  const diffMs = now - start;
-  const minutes = Math.floor(diffMs / 60000);
-  const seconds = Math.floor((diffMs % 60000) / 1000);
-  return `${minutes}m ${seconds}s`;
-}
 
 export const useRaceStore = create((set, get) => ({
   // Auth state
@@ -131,31 +124,12 @@ export const useRaceStore = create((set, get) => ({
     set({ riders: [], unsubscribeRiders: null });
   },
 
-  // --- Derived selectors ---
-  getRidersOnTrack: () => {
-    const { riders, now } = get();
-    return riders
-      .filter((r) => r.status === "ON_TRACK")
-      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
-      .map((r) => ({
-        ...r,
-        elapsedTime: formatElapsed(r.startTime, now),
-      }));
-  },
-
-  getFinishedRiders: () => {
-    const { riders } = get();
-    return riders
-      .filter((r) => r.status === "FINISHED")
-      .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime));
-  },
-
   setRaceNumber: (num) => set({ raceNumber: num }),
   setLoading: (val) => set({ loading: val }),
 
   handleStart: async (user, raceId) => {
     const { raceNumber } = get();
-    if (!raceNumber.trim() || !user) return;
+    if (!raceNumber.trim()) return;
 
     set({ loading: true });
     const num = raceNumber.trim();
@@ -166,7 +140,7 @@ export const useRaceStore = create((set, get) => ({
       raceNumber: num,
       startTime: now.toISOString(),
       status: "ON_TRACK",
-      startedBy: user.uid,
+      // startedBy: user.uid,
       finishTime: null,
       raceTime: null,
       timestamp: serverTimestamp(),
@@ -191,6 +165,44 @@ export const useRaceStore = create((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+  subscribeToRiders: () => {
+    // 1. Reference the collection
+    const q = query(
+      collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
+      orderBy("startTime", "asc") // Optional: sort by start time
+    );
+
+    // 2. Set up the listener
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const liveRiders = [];
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          liveRiders.push({
+            id: doc.id,
+            ...data,
+            // 3. CRITICAL: Handle Field Mapping
+            // Your handleStart saves "raceNumber", but your UI might expect "number"
+            number: data.raceNumber || data.number,
+            // Ensure dates are actual Date objects for math in your hook
+            startTime: data.startTime ? new Date(data.startTime) : null,
+            finishTime: data.finishTime ? new Date(data.finishTime) : null,
+          });
+        });
+
+        // 4. Update the store with the fresh list from the DB
+        set({ riders: liveRiders });
+      },
+      (error) => {
+        console.error("Firestore listener error:", error);
+      }
+    );
+
+    // Return the unsubscribe function so we can clean up
+    return unsubscribe;
   },
 
   // Finish state
