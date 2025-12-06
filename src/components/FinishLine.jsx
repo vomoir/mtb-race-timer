@@ -1,7 +1,7 @@
 import React from "react";
-import { List, Clock, RefreshCw, Timer } from "lucide-react";
-import { useRaceStore } from "./raceStore";
-import { formatTime, calculateRaceTime } from "./utils"; // adjust imports
+import { List, Clock, RefreshCw, Timer, Zap, Flag } from "lucide-react";
+import { useRaceStore } from "../store/raceStore";
+import { formatTime, calculateRaceTime } from "../store/utils";
 
 const FinishLine = ({ user }) => {
   const {

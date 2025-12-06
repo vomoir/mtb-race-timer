@@ -1,5 +1,6 @@
 import React from "react";
-import { useRaceStore } from "../store"; // Import the hook
+import { useRaceStore } from "../store/raceStore";
+import { Clock, Wifi, Hash, Play, Flag, Trophy } from "lucide-react";
 
 const Header = () => {
   // Grab everything from the store

@@ -18,6 +18,26 @@ export const calculateRaceTime = (startIso, endIso) => {
   )}.${pad(milliseconds)}`;
 };
 
+export const formatTime = (dateObj) => {
+  // if ("serviceWorker" in navigator) {
+  //   window.addEventListener("load", () => {
+  //     navigator.serviceWorker
+  //       .register("/service-worker.js")
+  //       .then((reg) => console.log("Service Worker Registered"))
+  //       .catch((err) => console.log("Service Worker Failed", err));
+  //   });
+  // }
+  if (!dateObj) return "--:--:--";
+  const d = new Date(dateObj);
+  return d.toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    fractionalSecondDigits: 2,
+  });
+};
+
 export const saveToLocalBackup = (type, data) => {
   try {
     const key = `mtb_backup_${type}`;

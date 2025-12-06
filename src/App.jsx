@@ -1,5 +1,29 @@
 import React, { useState, useEffect } from "react";
+import {
+  Play,
+  Flag,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  List,
+  RefreshCw,
+  Timer,
+  LogIn,
+  Hash,
+  FileText,
+  Trophy,
+  Download,
+  Wifi,
+  WifiOff,
+  Zap,
+} from "lucide-react";
+
 import { useRaceStore } from "./store/raceStore";
+import LoginScreen from "./components/LoginScreen";
+import Header from "./components/Header";
+import StarterComponent from "./components/Starter";
+import FinishLineComponent from "./components/FinishLine";
+import ResultsComponent from "./components/Results";
 // import { getAnalytics } from "firebase/analytics";
 // import { auth } from "../modules/firebase";
 
@@ -24,7 +48,7 @@ export default function App() {
     initAuthListener();
   }, [initAuthListener]);
 
-  const [loadingAuth] = useState(true);
+  // const [loadingAuth] = useState(false);
 
   // Monitor Connectivity
   useEffect(() => {
@@ -60,13 +84,13 @@ export default function App() {
     return () => clearInterval(interval);
   }, [tick]);
 
-  if (loadingAuth) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-900 text-white">
-        Loading Timing System...
-      </div>
-    );
-  }
+  // if (loadingAuth) {
+  //   return (
+  //     <div className="h-screen flex items-center justify-center bg-slate-900 text-white">
+  //       Loading Timing System...
+  //     </div>
+  //   );
+  // }
 
   // SHOW LOGIN SCREEN IF NO RACE ID
   if (!raceId) {

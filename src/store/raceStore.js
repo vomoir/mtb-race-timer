@@ -86,7 +86,8 @@ export const useRaceStore = create((set, get) => ({
 
   raceId: "",
   setRaceId: (id) => set({ raceId: id }),
-
+  now: new Date(), // reference time
+  tick: () => set({ now: new Date() }),
   isOnline: navigator.onLine,
   setIsOnline: (status) => set({ isOnline: status }),
   riders: [],

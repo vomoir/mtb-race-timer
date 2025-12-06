@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useRaceStore } from "../store"; // Import the hook
+import { useRaceStore } from "../store/raceStore";
+import { Clock, LogIn, Hash } from "lucide-react";
 
 const LoginScreen = () => {
   const [inputId, setInputId] = useState("");
