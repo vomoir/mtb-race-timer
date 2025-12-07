@@ -104,7 +104,7 @@ const Results = ({ riders, raceId, calculateRaceTime }) => {
 
                   return (
                     <tr
-                      key={rider.riderNumber}
+                      key={rider.id}
                       className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="p-4 font-bold text-slate-400 w-16">

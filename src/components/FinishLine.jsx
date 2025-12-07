@@ -201,7 +201,7 @@ const FinishLine = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {ridersOnTrack.map((rider) => (
               <div
-                key={rider.riderNumber}
+                key={rider.id}
                 className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex justify-between items-center hover:border-blue-300 transition-colors"
               >
                 <div>
@@ -242,7 +242,7 @@ const FinishLine = () => {
           <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
             {finishedRiders.slice(0, 5).map((rider) => (
               <div
-                key={rider.riderNumber}
+                key={rider.id}
                 className="p-3 border-b border-slate-200 last:border-0 flex justify-between items-center bg-white"
               >
                 <div className="flex items-center gap-3">
@@ -277,7 +277,7 @@ const FinishLine = () => {
               key={i}
               className="flex justify-between items-center text-sm text-slate-600 border-b border-slate-200 pb-1 last:border-0"
             >
-              <span>#{log.raceNumber}</span>
+              <span>#{log.riderNumber}</span>
               <span className="font-mono text-xs font-bold text-green-600">
                 {log.raceTime || "--:--"}
               </span>

@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -86,38 +87,6 @@ export const useRaceStore = create((set, get) => ({
   riders: [],
   unsubscribeRiders: null,
   setRiders: (riders) => set({ riders }),
-  subscribeRiders: (user, raceId) => {
-    if (!user || !raceId) return;
-
-    // Clean up any previous listener
-    const prevUnsub = get().unsubscribeRiders;
-    if (prevUnsub) prevUnsub();
-
-    const q = collection(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "mtb_riders"
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((doc) => doc.raceId === raceId); // client-side filter
-        set({ riders: data });
-      },
-      (error) => {
-        console.error("Firestore sync error:", error);
-      }
-    );
-
-    set({ unsubscribeRiders: unsubscribe });
-  },
-
   clearRiders: () => {
     const prevUnsub = get().unsubscribeRiders;
     if (prevUnsub) prevUnsub();
@@ -171,12 +140,34 @@ export const useRaceStore = create((set, get) => ({
       set({ loading: false });
     }
   },
-  subscribeToRiders: () => {
-    // 1. Reference the collection
-    const q = query(
-      collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-      orderBy("startTime", "asc") // Optional: sort by start time
+
+  subscribeToRiders: (raceId) => {
+    // 1. Create the query
+    // If you need to filter by raceId, use 'where' (requires index) or client-side filter
+    // const q = query(
+    //   collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
+    //   where("raceId", "==", raceId),
+    //   orderBy("startTime", "asc")
+    // );
+    const baseCollection = collection(
+      db,
+      "artifacts",
+      appId,
+      "public",
+      "data",
+      "mtb_riders"
     );
+
+    // Build constraints dynamically
+    const constraints = [orderBy("startTime", "asc")];
+
+    if (raceId) {
+      constraints.unshift(where("raceId", "==", raceId));
+    }
+
+    const q = query(baseCollection, ...constraints);
+
+    console.log(`Subscribing to riders...`);
 
     // 2. Set up the listener
     const unsubscribe = onSnapshot(
@@ -186,19 +177,24 @@ export const useRaceStore = create((set, get) => ({
 
         snapshot.forEach((doc) => {
           const data = doc.data();
+
+          // OPTIONAL: If you need to support multiple races, uncomment this check:
+          // if (raceId && data.raceId !== raceId) return;
+
           liveRiders.push({
-            id: doc.id,
+            id: doc.id, // CRITICAL: The Firestore ID needed for updates
             ...data,
-            // 3. CRITICAL: Handle Field Mapping
-            // Your handleStart saves "raceNumber", but your UI might expect "riderNumber"
-            riderNumber: data.raceNumber || data.riderNumber,
-            // Ensure dates are actual Date objects for math in your hook
+
+            // CRITICAL: Handle the field name mismatch
+            number: data.raceNumber || data.riderNumber || data.number,
+
+            // CRITICAL: Convert Strings/Timestamps to Date objects
             startTime: data.startTime ? new Date(data.startTime) : null,
             finishTime: data.finishTime ? new Date(data.finishTime) : null,
           });
         });
 
-        // 4. Update the store with the fresh list from the DB
+        // 3. Update the store
         set({ riders: liveRiders });
       },
       (error) => {
@@ -206,10 +202,9 @@ export const useRaceStore = create((set, get) => ({
       }
     );
 
-    // Return the unsubscribe function so we can clean up
+    // 4. Return unsubscribe so useEffect can clean up
     return unsubscribe;
   },
-
   // Finish state
   finishing: null,
   finishLogs: getLocalBackup("finishes"),
@@ -250,7 +245,7 @@ export const useRaceStore = create((set, get) => ({
 
   handleFinish: async (rider) => {
     if (!rider) return;
-    set({ finishing: rider.riderNumber });
+    set({ finishing: rider.id });
     const now = new Date();
     const nowIso = now.toISOString();
     const calculatedRaceTime = calculateRaceTime(rider.startTime, nowIso);
@@ -273,9 +268,16 @@ export const useRaceStore = create((set, get) => ({
         "public",
         "data",
         "mtb_riders",
-        rider.riderNumber
+        rider.id
       );
       await updateDoc(docRef, finishData);
+      // Optional: Optimistic update (update local state immediately)
+      // The subscription will eventually update it, but this makes UI snappy
+      set((state) => ({
+        riders: state.riders.map((r) =>
+          r.id === rider.id ? { ...r, ...finishData } : r
+        ),
+      }));
     } catch (error) {
       console.error("Error finishing rider:", error);
     } finally {

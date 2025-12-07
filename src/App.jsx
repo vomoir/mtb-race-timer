@@ -39,7 +39,7 @@ export default function App() {
     raceId,
     setRaceId,
     setIsOnline,
-    subscribeRiders,
+    subscribeToRiders,
     clearRiders,
     tick,
   } = useRaceStore();
@@ -51,8 +51,22 @@ export default function App() {
     initAuthListener();
   }, [initAuthListener]);
 
-  // const [loadingAuth] = useState(false);
+  useEffect(() => {
+    console.log("App mounted. Starting Listener...");
+    const unsubscribe = subscribeToRiders();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [subscribeToRiders]);
 
+  useEffect(() => {
+    // Pass raceId here if you have one, or leave empty
+    const unsubscribe = subscribeToRiders();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [subscribeToRiders]);
   // Monitor Connectivity
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -76,10 +90,10 @@ export default function App() {
   }, [initAuth]);
 
   // 2. Real-time Listener filtered by RACE ID
-  useEffect(() => {
-    subscribeRiders(user, raceId);
-    return () => clearRiders();
-  }, [user, raceId, subscribeRiders, clearRiders]);
+  // useEffect(() => {
+  //   subscribeToRiders(raceId);
+  //   return () => clearRiders();
+  // }, [raceId, subscribeToRiders, clearRiders]);
 
   // start ticking every 5s
   useEffect(() => {
