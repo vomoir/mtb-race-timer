@@ -342,6 +342,8 @@ export const useRaceStore = create((set, get) => ({
       const newDoc = {
         raceId: raceId,
         riderNumber: String(rider.riderNumber), // Ensure consistent string format
+        name: rider.name,
+        category: rider.category,
         status: "WAITING",
         startTime: null,
         finishTime: null,
