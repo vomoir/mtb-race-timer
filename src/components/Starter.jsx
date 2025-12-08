@@ -1,29 +1,30 @@
 import React from "react";
 import { Play, RefreshCw, CheckCircle, ArrowUp } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
-import { formatTime } from "../store/utils";
-const StarterComponent = ({ user }) => {
+import { formatTime } from "../utils/utils";
+import { useRiderLists } from "../hooks/useRiderLists";
+const StarterComponent = () => {
   const {
-    raceNumber,
+    riderNumber,
     raceId,
     loading,
     lastStarted,
     localLogs,
-    setRaceNumber,
+    setRiderNumber,
     handleStart,
-    riders,
   } = useRaceStore();
 
   const onSubmit = (e) => {
     e.preventDefault();
-    handleStart(user, raceId);
+    handleStart(raceId, riderNumber);
   };
   const addRider = (riderNumber) => {
-    setRaceNumber(riderNumber);
+    setRiderNumber(riderNumber);
   };
   // const [searchTerm, setSearchTerm] = useState("");
   // Local filter for "WAITING" riders
-  const waitingRiders = riders.filter((r) => r.status === "WAITING");
+  // const waitingRiders = riders.filter((r) => r.status === "WAITING");
+  const { waitingRiders } = useRiderLists();
 
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
@@ -38,15 +39,15 @@ const StarterComponent = ({ user }) => {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-500 mb-1">
-              Race Number
+              Rider Number
             </label>
             <input
               id="riderNumber"
               type="riderNumber"
               pattern="[0-9]*"
               inputMode="numeric"
-              value={raceNumber}
-              onChange={(e) => setRaceNumber(e.target.value)}
+              value={riderNumber}
+              onChange={(e) => setRiderNumber(e.target.value)}
               className="w-full text-4xl font-bold p-4 text-center border-2 border-slate-300 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none transition-all placeholder:text-slate-200"
               placeholder="000"
               autoFocus
@@ -54,7 +55,7 @@ const StarterComponent = ({ user }) => {
           </div>
           <button
             type="submit"
-            disabled={!raceNumber || loading}
+            disabled={!riderNumber || loading}
             className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xl font-bold py-6 rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             {loading ? <RefreshCw className="animate-spin" /> : "START RIDER"}
@@ -111,7 +112,7 @@ const StarterComponent = ({ user }) => {
               key={i}
               className="flex justify-between text-sm text-slate-600 border-b border-slate-200 pb-1 last:border-0"
             >
-              <span>#{log.raceNumber}</span>
+              <span>#{log.riderNumber}</span>
               <span className="font-mono text-xs">
                 {formatTime(log.startTime)}
               </span>

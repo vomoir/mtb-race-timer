@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 // import { useRaceStore } from "../store/raceStore";
-// import { formatTime, calculateRaceTime } from "../store/utils";
+// import { formatTime, calculateRaceTime } from "../utils/utils";
 
 const Results = ({ riders, raceId, calculateRaceTime }) => {
   const sortedResults = useMemo(() => {

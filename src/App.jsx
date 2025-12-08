@@ -34,30 +34,29 @@ import RiderImporter from "./components/RiderImporter";
 
 // --- Helpers ---
 export default function App() {
-  const {
-    activeTab,
-    raceId,
-    setRaceId,
-    setIsOnline,
-    subscribeToRiders,
-    clearRiders,
-    tick,
-  } = useRaceStore();
+  const { activeTab, raceId, setRaceId, setIsOnline, subscribeToRiders, tick } =
+    useRaceStore();
   const [user] = useState(null);
   const initAuthListener = useRaceStore((s) => s.initAuthListener);
   const initAuth = useRaceStore((s) => s.initAuth);
 
   useEffect(() => {
+    console.log("App mounted. Authenticating...");
     initAuthListener();
   }, [initAuthListener]);
 
   useEffect(() => {
-    console.log("App mounted. Starting Listener...");
-    const unsubscribe = subscribeToRiders();
+    if (!raceId) {
+      // No raceId yet → don’t subscribe
+      return;
+    }
+
+    console.log(`App mounted. Starting Listener...${raceId}`);
+    const unsubscribe = subscribeToRiders(raceId);
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [subscribeToRiders]);
+  }, [subscribeToRiders, raceId]);
 
   useEffect(() => {
     // Pass raceId here if you have one, or leave empty

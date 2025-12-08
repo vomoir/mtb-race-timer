@@ -6,7 +6,7 @@ import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { Card } from "./Card";
 
 const RiderImporter = () => {
-  const { setRiders } = useRaceStore();
+  const { setRiders, importDemoRiders } = useRaceStore();
 
   const [dragActive, setDragActive] = useState(false);
 
@@ -83,6 +83,7 @@ const RiderImporter = () => {
       },
     ];
     setRiders(demoRiders);
+    importDemoRiders(demoRiders);
     toast.success("Demo data loaded!");
   };
 

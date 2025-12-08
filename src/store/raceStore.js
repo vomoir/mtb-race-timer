@@ -1,4 +1,5 @@
 import { create } from "zustand";
+// import { normalizeRiders } from "../utils/normalizeRiders.js";
 
 import {
   addDoc,
@@ -13,7 +14,6 @@ import {
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
   signInAnonymously,
   signOut,
   setPersistence,
@@ -22,8 +22,8 @@ import {
 
 import { db, appId, auth } from "../modules/firebase";
 
-import { getLocalBackup, saveToLocalBackup } from "./utils.js";
-import { calculateRaceTime } from "./utils.js"; // adjust imports
+import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
+import { calculateRaceTime } from "../utils/utils.js"; // adjust imports
 
 export const useRaceStore = create((set, get) => ({
   // Auth state
@@ -59,9 +59,9 @@ export const useRaceStore = create((set, get) => ({
   },
 
   // login action
-  login: async (email, password) => {
+  login: async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInAnonymously(auth);
       // user will be set automatically by onAuthStateChanged
     } catch (error) {
       console.error("Login error:", error);
@@ -70,7 +70,7 @@ export const useRaceStore = create((set, get) => ({
   },
 
   // Starter state
-  raceNumber: "",
+  riderNumber: "",
   loading: false,
   lastStarted: null,
   localLogs: getLocalBackup("starts"),
@@ -85,70 +85,87 @@ export const useRaceStore = create((set, get) => ({
   isOnline: navigator.onLine,
   setIsOnline: (status) => set({ isOnline: status }),
   riders: [],
-  unsubscribeRiders: null,
   setRiders: (riders) => set({ riders }),
+  unsubscribeRiders: null,
   clearRiders: () => {
     const prevUnsub = get().unsubscribeRiders;
     if (prevUnsub) prevUnsub();
     set({ riders: [], unsubscribeRiders: null });
   },
 
-  setRaceNumber: (num) => set({ raceNumber: num }),
+  setRiderNumber: (num) => {
+    console.log("Setting riderNumber to:", num);
+    set({ riderNumber: num });
+  },
+
   setLoading: (val) => set({ loading: val }),
 
-  handleStart: async (user, raceId) => {
-    const { raceNumber, riders } = get();
-    if (!raceNumber.trim()) return;
+  handleStart: async (raceId, riderNumber) => {
+    if (!riderNumber.trim()) return;
+    const { riders } = get();
+    console.log(`Rider Number ${riderNumber}`);
+    // THE GUARD CLAUSE: Check if this rider is already active or finished
+    // We check against 'riderNumber'
+    const nowIso = new Date().toISOString();
+    const existingRider = riders.find((r) => r.riderNumber === riderNumber);
 
-    set({ loading: true });
-    const num = raceNumber.trim();
-    const now = new Date();
-    set({
-      riders: riders.map((r) =>
-        r.riderNumber === num ? { ...r, status: "ON_TRACK", startTime: now } : r
-      ),
-    });
+    console.log("Path check:", appId, existingRider?.id);
+    const id = existingRider.id;
+    console.log(`existing rider id ${id}`);
 
-    const raceData = {
-      raceId,
-      raceNumber: num,
-      startTime: now.toISOString(),
-      status: "ON_TRACK",
-      // startedBy: user.uid,
-      finishTime: null,
-      raceTime: null,
-      timestamp: serverTimestamp(),
-    };
+    if (existingRider) {
+      if (existingRider.status === "ON_TRACK") {
+        alert(`⚠️ Rider #${riderNumber} is ALREADY on track!`);
+        return;
+      }
+      // SCENARIO: UPDATING AN EXISTING RIDER (e.g. moving from WAITING to ON_TRACK)
+      const docRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "mtb_riders",
+        existingRider.id
+      );
 
-    try {
-      saveToLocalBackup("starts", raceData);
-      set({ localLogs: getLocalBackup("starts") });
+      await updateDoc(docRef, {
+        startTime: nowIso,
+        status: "ON_TRACK",
+        riderNumber: riderNumber,
+        // We don't change raceId or riderNumber, they are already there
+      });
+
+      if (existingRider.status === "FINISHED") {
+        const confirmReRun = window.confirm(
+          `Rider #${riderNumber} has already finished. Do you want to let them run again?`
+        );
+        if (!confirmReRun) return;
+      }
+    } else {
+      // SCENARIO: NEW "AD-HOC" RIDER (Was not in the system)
+      const newRiderData = {
+        raceId,
+        riderNumber: riderNumber,
+        startTime: nowIso,
+        status: "ON_TRACK",
+        finishTime: null,
+        raceTime: null,
+        timestamp: serverTimestamp(),
+      };
 
       await addDoc(
         collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-        raceData
+        newRiderData
       );
-
-      set({
-        lastStarted: { riderNumber: num, time: now },
-        raceNumber: "",
-      });
-    } catch (error) {
-      console.error("Error starting rider:", error);
-      alert("Error saving data. Checked local storage.");
-    } finally {
-      set({ loading: false });
+      saveToLocalBackup("starts", newRiderData);
     }
+    set({ loading: false });
   },
 
   subscribeToRiders: (raceId) => {
-    // 1. Create the query
-    // If you need to filter by raceId, use 'where' (requires index) or client-side filter
-    // const q = query(
-    //   collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-    //   where("raceId", "==", raceId),
-    //   orderBy("startTime", "asc")
-    // );
+    if (!raceId) return null; // no subscription
+
     const baseCollection = collection(
       db,
       "artifacts",
@@ -167,35 +184,38 @@ export const useRaceStore = create((set, get) => ({
 
     const q = query(baseCollection, ...constraints);
 
-    console.log(`Subscribing to riders...`);
+    console.log(`Subscribing to riders... ${raceId}`);
 
     // 2. Set up the listener
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const liveRiders = [];
+        let liveRiders = [];
 
-        snapshot.forEach((doc) => {
+        // snapshot.forEach((doc) => {
+        //   const data = doc.data();
+        //   liveRiders.push({
+        //     ...data,
+        //     id: doc.id,
+        //     riderNumber: data.riderNumber,
+        //     startTime: data.startTime ? data.startTime : null,
+        //     finishTime: data.finishTime ? data.finishTime : null,
+        //   });
+        // });
+        liveRiders = snapshot.docs.map((doc) => {
           const data = doc.data();
-
-          // OPTIONAL: If you need to support multiple races, uncomment this check:
-          // if (raceId && data.raceId !== raceId) return;
-
-          liveRiders.push({
-            id: doc.id, // CRITICAL: The Firestore ID needed for updates
+          return {
             ...data,
-
-            // CRITICAL: Handle the field name mismatch
-            number: data.raceNumber || data.riderNumber || data.number,
-
-            // CRITICAL: Convert Strings/Timestamps to Date objects
-            startTime: data.startTime ? new Date(data.startTime) : null,
-            finishTime: data.finishTime ? new Date(data.finishTime) : null,
-          });
+            id: doc.id,
+            riderNumber: String(data.riderNumber), // normalize type
+            startTime: data.startTime ? data.startTime : null,
+            finishTime: data.finishTime ? data.finishTime : null,
+          };
         });
+        set({ riders: liveRiders });
 
         // 3. Update the store
-        set({ riders: liveRiders });
+        // set({ riders: normalizeRiders(liveRiders) });
       },
       (error) => {
         console.error("Firestore listener error:", error);
@@ -222,7 +242,7 @@ export const useRaceStore = create((set, get) => ({
 
     const raceData = {
       raceId,
-      raceNumber: num,
+      riderNumber: num,
       startTime: now.toISOString(),
       status: "ON_TRACK",
       startedBy: user.uid,
@@ -289,11 +309,57 @@ export const useRaceStore = create((set, get) => ({
     const { manualNumber } = get();
     const num = manualNumber.trim();
     if (!num) return;
-    const rider = ridersOnTrack.find((r) => r.raceNumber === num);
+    const rider = ridersOnTrack.find((r) => r.riderNumber === num);
     if (rider) {
       get().handleFinish(user, raceId, rider);
     } else {
       alert(`Rider #${num} not found on track for Race ID: ${raceId}!`);
+    }
+  },
+
+  importDemoRiders: async (ridersArray) => {
+    const raceId = get().raceId;
+
+    if (!db || !appId || !raceId) {
+      console.error(
+        "Cannot import demo data: Missing dependencies (db, appId, raceId)."
+      );
+      return;
+    }
+
+    const collectionRef = collection(
+      db,
+      "artifacts",
+      appId,
+      "public",
+      "data",
+      "mtb_riders"
+    );
+
+    // Create an array of Promises for concurrent writes
+    const promises = ridersArray.map((rider) => {
+      // 1. Prepare new document data
+      const newDoc = {
+        raceId: raceId,
+        riderNumber: String(rider.riderNumber), // Ensure consistent string format
+        status: "WAITING",
+        startTime: null,
+        finishTime: null,
+        raceTime: null,
+        timestamp: serverTimestamp(),
+        // Include any other necessary fields from your demo structure
+      };
+
+      // 2. Add document to Firestore
+      return addDoc(collectionRef, newDoc);
+    });
+
+    try {
+      await Promise.all(promises);
+      console.log(`Successfully added ${ridersArray.length} demo riders.`);
+      // The onSnapshot listener handles the state update from here!
+    } catch (error) {
+      console.error("Error importing demo riders:", error);
     }
   },
 }));

@@ -22,7 +22,19 @@ export function useRiderLists() {
       .sort((a, b) => new Date(a.totalTime) - new Date(b.totalTime));
   }, [riders]);
 
-  return { ridersOnTrack, finishedRiders };
+  const waitingRiders = useMemo(() => {
+    // console.log(`In waitingRiders ${!Array.isArray(riders)}`);
+    // console.log("Riders type:", typeof riders, riders);
+
+    if (!Array.isArray(riders)) {
+      console.warn("Riders state is not an array!", riders);
+      return [];
+    }
+    console.log("\nWaiting Riders Store state:", useRaceStore.getState());
+    return riders.filter((r) => r.status === "WAITING");
+  }, [riders]);
+
+  return { ridersOnTrack, finishedRiders, waitingRiders };
 }
 
 function formatElapsed(startTime, now) {

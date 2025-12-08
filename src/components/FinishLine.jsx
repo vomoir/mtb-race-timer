@@ -13,7 +13,7 @@ import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { useRiderLists } from "../hooks/useRiderLists";
 
-import { formatTime, calculateRaceTime } from "../store/utils"; // adjust imports
+import { formatTime, calculateRaceTime } from "../utils/utils"; // adjust imports
 
 const FinishLine = () => {
   const {
