@@ -70,3 +70,8 @@ export const formatDuration = (ms) => {
     .toString()
     .padStart(2, "0")}.${centis.toString().padStart(2, "0")}`;
 };
+
+export function getRiderOnTrack(ridersOnTrack, riderNumber) {
+  if (!Array.isArray(ridersOnTrack)) return null;
+  return ridersOnTrack.find((r) => r.riderNumber === riderNumber);
+}

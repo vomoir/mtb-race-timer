@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, Download } from "lucide-react";
+import { Trophy, Download, FileText } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
@@ -15,7 +15,7 @@ const Results = () => {
       ",Rank,Rider Number,Rider Name, Race Time,Start Time,Finish Time,Status",
     ];
     const raceDetails = [
-      `Track Name: ${raceId}\nRace Date: ${new Date().toISOString()}`,
+      `Track Name: ${raceId}\nRace Date: ${new Date().toLocaleTimeString()}`,
     ];
     // CSV Rows
     const rows = finishedRiders.map((r, index) => {

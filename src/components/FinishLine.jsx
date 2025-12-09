@@ -13,7 +13,7 @@ import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { useRiderLists } from "../hooks/useRiderLists";
 
-import { formatTime, calculateRaceTime } from "../utils/utils"; // adjust imports
+import { formatTime, calculateRaceTime, getRiderOnTrack } from "../utils/utils"; // adjust imports
 
 const FinishLine = () => {
   const {
@@ -42,17 +42,32 @@ const FinishLine = () => {
     ]);
   };
 
+  const handlePendingSave = (pendingItem) => {
+    if (!pendingItem.riderNumber) return;
+    // Check if rider is actually on track and get them
+    const riderOnTrack = getRiderOnTrack(
+      ridersOnTrack,
+      pendingItem.riderNumber
+    );
+
+    if (riderOnTrack) {
+      handleFinish(riderOnTrack);
+      setPendingFinishes((prev) =>
+        prev.filter((p) => p.id !== riderOnTrack.riderNumber)
+      );
+    } else {
+      alert(`Rider #${riderOnTrack.riderNumber} is not currently on track!`);
+    }
+  };
+
   const handleSave = (rider) => {
     if (!rider.riderNumber) return;
     // Check if rider is actually on track
-    const isOnTrack = ridersOnTrack.some(
-      (r) => r.riderNumber === rider.riderNumber
-    );
-
-    if (isOnTrack) {
-      handleFinish(rider);
+    const riderOnTrack = getRiderOnTrack(ridersOnTrack, rider.riderNumber);
+    if (riderOnTrack) {
+      handleFinish(riderOnTrack);
       setPendingFinishes((prev) =>
-        prev.filter((p) => p.id !== rider.riderNumber)
+        prev.filter((p) => p.id !== riderOnTrack.riderNumber)
       );
     } else {
       alert(`Rider #${rider.riderNumber} is not currently on track!`);
@@ -122,11 +137,12 @@ const FinishLine = () => {
                     )
                   );
                 }}
-                onKeyDown={(e) => e.key === "Enter" && handleSave(item)}
+                onKeyDown={(e) => e.key === "Enter" && handlePendingSave(item)}
                 placeholder="#"
                 className="flex-1 w-12 font-bold p-1 text-center border border-slate-300 rounded"
               />
               <button
+                title="Save"
                 onClick={() => handleSave(item)}
                 className="p-1.5 rounded text-white bg-emerald-500"
               >

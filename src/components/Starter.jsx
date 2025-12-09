@@ -17,7 +17,9 @@ const StarterComponent = () => {
   const onSubmit = (e) => {
     e.preventDefault();
     handleStart(raceId, riderNumber);
+    setRiderNumber("");
   };
+  // Moves rider from list of waiting riders into the "start zone"
   const addRider = (riderNumber) => {
     setRiderNumber(riderNumber);
   };
