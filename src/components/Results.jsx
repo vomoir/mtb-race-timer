@@ -15,7 +15,7 @@ const Results = () => {
       ",Rank,Rider Number,Rider Name, Race Time,Start Time,Finish Time,Status",
     ];
     const raceDetails = [
-      `Track Name: ${raceId}\nRace Date: ${new Date().toLocaleTimeString()}`,
+      `Track Name: ${raceId}\nRace Date: ${new Date().toLocaleDateString()}`,
     ];
     // CSV Rows
     const rows = finishedRiders.map((r, index) => {
@@ -83,9 +83,6 @@ const Results = () => {
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">
                     Time
                   </th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right hidden sm:table-cell">
-                    Diff
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -95,14 +92,6 @@ const Results = () => {
                     rider.startTime,
                     rider.finishTime
                   );
-                  const diff =
-                    index === 0
-                      ? "-"
-                      : `+${(
-                          (rider.durationMs - finishedRiders[0].durationMs) /
-                          1000
-                        ).toFixed(2)}`;
-
                   return (
                     <tr
                       key={rider.id}
@@ -135,11 +124,6 @@ const Results = () => {
                           }`}
                         >
                           {raceTime}
-                        </div>
-                      </td>
-                      <td className="p-4 text-right hidden sm:table-cell">
-                        <div className="font-mono text-xs text-red-500 font-medium">
-                          {diff}
                         </div>
                       </td>
                     </tr>

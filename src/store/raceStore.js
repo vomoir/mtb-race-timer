@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import toast from "react-hot-toast";
 // import { normalizeRiders } from "../utils/normalizeRiders.js";
 
 import {
@@ -115,7 +116,7 @@ export const useRaceStore = create((set, get) => ({
 
     if (existingRider) {
       if (existingRider.status === "ON_TRACK") {
-        alert(`⚠️ Rider #${riderNumber} is ALREADY on track!`);
+        toast.error(`Rider #${riderNumber} is ALREADY on track!`);
         return;
       }
       // SCENARIO: UPDATING AN EXISTING RIDER (e.g. moving from WAITING to ON_TRACK)
@@ -313,11 +314,11 @@ export const useRaceStore = create((set, get) => ({
     if (rider) {
       get().handleFinish(user, raceId, rider);
     } else {
-      alert(`Rider #${num} not found on track for Race ID: ${raceId}!`);
+      toast(`Rider #${num} not found on track for Race ID: ${raceId}!`);
     }
   },
 
-  importDemoRiders: async (ridersArray) => {
+  importRidersToDb: async (ridersArray) => {
     const raceId = get().raceId;
 
     if (!db || !appId || !raceId) {

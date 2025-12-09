@@ -1,6 +1,7 @@
 // hooks/useRiderLists.js
 import { useMemo } from "react";
 import { useRaceStore } from "../store/raceStore";
+import { calculateRaceTime } from "../utils/utils";
 
 export function useRiderLists() {
   const riders = useRaceStore((state) => state.riders);
@@ -17,18 +18,16 @@ export function useRiderLists() {
   }, [riders, now]);
 
   const finishedRiders = useMemo(() => {
-    return (
-      riders
-        .filter((r) => r.status === "FINISHED")
-        // .sort((a, b) => new Date(a.totalTime) - new Date(b.totalTime));
-        .sort((a, b) => a.totalTime - b.totalTime)
-    );
+    return riders
+      .filter((r) => r.status === "FINISHED")
+      .sort((a, b) => {
+        const timeA = calculateRaceTime(a.startTime, a.finishTime);
+        const timeB = calculateRaceTime(b.startTime, b.finishTime);
+        return timeA - timeB;
+      });
   }, [riders]);
 
   const waitingRiders = useMemo(() => {
-    // console.log(`In waitingRiders ${!Array.isArray(riders)}`);
-    // console.log("Riders type:", typeof riders, riders);
-
     if (!Array.isArray(riders)) {
       console.warn("Riders state is not an array!", riders);
       return [];

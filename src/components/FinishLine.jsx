@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
 import {
   List,
   Clock,
@@ -32,13 +33,13 @@ const FinishLine = () => {
   const handleCapture = () => {
     const now = new Date();
     setPendingFinishes((prev) => [
+      ...prev,
       {
         id: crypto.randomUUID(),
         timestamp: now,
         displayTime: now.toLocaleTimeString("en-US", { hour12: false }),
         riderNumber: "",
       },
-      ...prev,
     ]);
   };
 
@@ -56,7 +57,7 @@ const FinishLine = () => {
         prev.filter((p) => p.id !== riderOnTrack.riderNumber)
       );
     } else {
-      alert(`Rider #${riderOnTrack.riderNumber} is not currently on track!`);
+      toast(`Rider #${riderOnTrack.riderNumber} is not currently on track!`);
     }
   };
 
@@ -70,10 +71,18 @@ const FinishLine = () => {
         prev.filter((p) => p.id !== riderOnTrack.riderNumber)
       );
     } else {
-      alert(`Rider #${rider.riderNumber} is not currently on track!`);
+      toast(`Rider #${rider.riderNumber} is not currently on track!`);
     }
   };
 
+  const removePending = (rider) => {
+    setPendingFinishes((prev) => prev.filter((p) => p.id !== rider.id));
+  };
+
+  const savePending = (rider) => {
+    handleSave(rider);
+    removePending(rider);
+  };
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* SOLO START TOGGLE */}
@@ -143,7 +152,7 @@ const FinishLine = () => {
               />
               <button
                 title="Save"
-                onClick={() => handleSave(item)}
+                onClick={() => savePending(item)}
                 className="p-1.5 rounded text-white bg-emerald-500"
               >
                 <Save size={18} />
