@@ -247,7 +247,7 @@ const FinishLine = () => {
               >
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-slate-700 w-12">
-                    #{rider.raceNumber}
+                    #{rider.riderNumber}
                   </span>
                   <span className="text-xs text-slate-400">
                     ({formatTime(rider.finishTime)})

@@ -17,9 +17,12 @@ export function useRiderLists() {
   }, [riders, now]);
 
   const finishedRiders = useMemo(() => {
-    return riders
-      .filter((r) => r.status === "FINISHED")
-      .sort((a, b) => new Date(a.totalTime) - new Date(b.totalTime));
+    return (
+      riders
+        .filter((r) => r.status === "FINISHED")
+        // .sort((a, b) => new Date(a.totalTime) - new Date(b.totalTime));
+        .sort((a, b) => a.totalTime - b.totalTime)
+    );
   }, [riders]);
 
   const waitingRiders = useMemo(() => {
