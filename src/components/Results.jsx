@@ -19,7 +19,9 @@ const Results = () => {
     ];
     // CSV Rows
     const rows = finishedRiders.map((r, index) => {
-      const raceTime = calculateRaceDuration(r.startTime, r.finishTime);
+      const raceTime = formatRaceTime(
+        calculateRaceDuration(r.startTime, r.finishTime)
+      );
       const start = new Date(r.startTime).toLocaleTimeString();
       const finish = new Date(r.finishTime).toLocaleTimeString();
       return `,${index + 1},${r.riderNumber},${r.name},${

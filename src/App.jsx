@@ -119,7 +119,7 @@ export default function App() {
           <ResultsComponent user={user} raceId={raceId} />
         )}
       </main>
-      <Toaster />a
+      <Toaster />
     </div>
   );
 }
