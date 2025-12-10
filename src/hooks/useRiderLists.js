@@ -1,7 +1,7 @@
 // hooks/useRiderLists.js
 import { useMemo } from "react";
 import { useRaceStore } from "../store/raceStore";
-import { calculateRaceTime } from "../utils/utils";
+import { calculateRaceDuration } from "../utils/utils";
 
 export function useRiderLists() {
   const riders = useRaceStore((state) => state.riders);
@@ -21,8 +21,8 @@ export function useRiderLists() {
     return riders
       .filter((r) => r.status === "FINISHED")
       .sort((a, b) => {
-        const timeA = calculateRaceTime(a.startTime, a.finishTime);
-        const timeB = calculateRaceTime(b.startTime, b.finishTime);
+        const timeA = calculateRaceDuration(a.startTime, a.finishTime);
+        const timeB = calculateRaceDuration(b.startTime, b.finishTime);
         return timeA - timeB;
       });
   }, [riders]);

@@ -24,7 +24,7 @@ import {
 import { db, appId, auth } from "../modules/firebase";
 
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
-import { calculateRaceTime } from "../utils/utils.js"; // adjust imports
+import { calculateRaceDuration } from "../utils/utils.js"; // adjust imports
 
 export const useRaceStore = create((set, get) => ({
   // Auth state
@@ -76,7 +76,7 @@ export const useRaceStore = create((set, get) => ({
   lastStarted: null,
   localLogs: getLocalBackup("starts"),
 
-  activeTab: "starter",
+  activeTab: "import",
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   raceId: "",
@@ -104,13 +104,12 @@ export const useRaceStore = create((set, get) => ({
   handleStart: async (raceId, riderNumber) => {
     if (!riderNumber.trim()) return;
     const { riders } = get();
-    console.log(`Rider Number ${riderNumber}`);
+
     // THE GUARD CLAUSE: Check if this rider is already active or finished
     // We check against 'riderNumber'
     const nowIso = new Date().toISOString();
     const existingRider = riders.find((r) => r.riderNumber === riderNumber);
 
-    console.log("Path check:", appId, existingRider?.id);
     const id = existingRider.id;
     console.log(`existing rider id ${id}`);
 
@@ -192,17 +191,6 @@ export const useRaceStore = create((set, get) => ({
       q,
       (snapshot) => {
         let liveRiders = [];
-
-        // snapshot.forEach((doc) => {
-        //   const data = doc.data();
-        //   liveRiders.push({
-        //     ...data,
-        //     id: doc.id,
-        //     riderNumber: data.riderNumber,
-        //     startTime: data.startTime ? data.startTime : null,
-        //     finishTime: data.finishTime ? data.finishTime : null,
-        //   });
-        // });
         liveRiders = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -214,9 +202,6 @@ export const useRaceStore = create((set, get) => ({
           };
         });
         set({ riders: liveRiders });
-
-        // 3. Update the store
-        // set({ riders: normalizeRiders(liveRiders) });
       },
       (error) => {
         console.error("Firestore listener error:", error);
@@ -260,6 +245,7 @@ export const useRaceStore = create((set, get) => ({
       );
       set({ soloNumber: "", showSoloStart: false });
     } catch (error) {
+      toast.error(`Error starting rider: ${error}`);
       console.error("Error starting rider:", error);
     }
   },
@@ -269,7 +255,7 @@ export const useRaceStore = create((set, get) => ({
     set({ finishing: rider.id });
     const now = new Date();
     const nowIso = now.toISOString();
-    const calculatedRaceTime = calculateRaceTime(rider.startTime, nowIso);
+    const calculatedRaceTime = calculateRaceDuration(rider.startTime, nowIso);
 
     const finishData = {
       status: "FINISHED",
@@ -306,19 +292,7 @@ export const useRaceStore = create((set, get) => ({
     }
   },
 
-  handleManualFinish: (user, raceId, ridersOnTrack) => {
-    const { manualNumber } = get();
-    const num = manualNumber.trim();
-    if (!num) return;
-    const rider = ridersOnTrack.find((r) => r.riderNumber === num);
-    if (rider) {
-      get().handleFinish(user, raceId, rider);
-    } else {
-      toast(`Rider #${num} not found on track for Race ID: ${raceId}!`);
-    }
-  },
-
-  importRidersToDb: async (ridersArray) => {
+  importRidersToDb: async (importRiders) => {
     const raceId = get().raceId;
 
     if (!db || !appId || !raceId) {
@@ -336,30 +310,52 @@ export const useRaceStore = create((set, get) => ({
       "data",
       "mtb_riders"
     );
+    // Normalize: always work with an array
+    const ridersArray = Array.isArray(importRiders)
+      ? importRiders
+      : [importRiders];
+    // Check for invalid data
+    const skipped = ridersArray.filter(
+      (r) => !r.riderNumber || String(r.riderNumber).trim() === ""
+    );
+    if (skipped.length > 0) {
+      toast.error(`Skipped ${skipped.length} rider(s) with missing numbers`);
+    }
+    const validRiders = [];
+    ridersArray.forEach((r) => {
+      if (!r.riderNumber || String(r.riderNumber).trim() === "") {
+        toast.error(
+          `Skipped rider: missing rider number (${r.firstName} ${r.lastName})`
+        );
+      } else {
+        validRiders.push(r);
+      }
+    });
 
     // Create an array of Promises for concurrent writes
-    const promises = ridersArray.map((rider) => {
-      // 1. Prepare new document data
-      const newDoc = {
-        raceId: raceId,
-        riderNumber: String(rider.riderNumber), // Ensure consistent string format
-        name: rider.name,
-        category: rider.category,
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        raceTime: null,
-        timestamp: serverTimestamp(),
-        // Include any other necessary fields from your demo structure
-      };
+    const promises = validRiders
+      .filter((r) => r.riderNumber && String(r.riderNumber).trim() !== "")
+      .map((rider) => {
+        const newDoc = {
+          raceId,
+          riderNumber: String(rider.riderNumber).trim(), // Ensure consistent string format
+          firstName: rider.firstName,
+          lastName: rider.lastName,
+          caLicenceNumber: rider.caLicenceNumber,
+          category: rider.category,
+          status: "WAITING",
+          startTime: null,
+          finishTime: null,
+          raceTime: null,
+          timestamp: serverTimestamp(),
+        };
 
-      // 2. Add document to Firestore
-      return addDoc(collectionRef, newDoc);
-    });
+        return addDoc(collectionRef, newDoc);
+      });
 
     try {
       await Promise.all(promises);
-      console.log(`Successfully added ${ridersArray.length} demo riders.`);
+      console.log(`Successfully added ${promises.length} riders.`);
       // The onSnapshot listener handles the state update from here!
     } catch (error) {
       console.error("Error importing demo riders:", error);

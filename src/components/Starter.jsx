@@ -63,7 +63,7 @@ const StarterComponent = () => {
             {loading ? <RefreshCw className="animate-spin" /> : "START RIDER"}
           </button>
         </form>
-        <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-50/30">
+        <div className="overflow-y-auto p-2 space-y-2 bg-slate-50/30 max-h-96 rounded-lg">
           {waitingRiders.map((rider) => (
             <div
               key={rider.riderNumber}
@@ -74,7 +74,9 @@ const StarterComponent = () => {
                   {rider.riderNumber}
                 </div>
                 <div>
-                  <div className="font-bold text-slate-800">{rider.name}</div>
+                  <div className="font-bold text-slate-800">
+                    {rider.firstName} {rider.lastName}
+                  </div>
                   <div className="text-xs text-slate-500">{rider.category}</div>
                 </div>
               </div>
@@ -87,7 +89,6 @@ const StarterComponent = () => {
             </div>
           ))}
         </div>
-
         {lastStarted && (
           <div className="mt-6 p-4 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-3">

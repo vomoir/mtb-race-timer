@@ -60,7 +60,7 @@ const Header = () => {
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <File size={18} /> Import Riders
+          <File size={18} /> Rider Registration
         </button>
         <button
           onClick={() => setActiveTab("starter")}

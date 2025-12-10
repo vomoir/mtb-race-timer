@@ -1,32 +1,29 @@
-export const calculateRaceTime = (startIso, endIso) => {
-  const start = new Date(startIso);
-  const end = new Date(endIso);
+// Always return a numeric duration in ms
+export const calculateRaceDuration = (startIso, endIso) => {
+  if (!startIso || !endIso) return Infinity;
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
   const diff = end - start;
+  return diff < 0 ? Infinity : diff;
+};
 
-  if (diff < 0) return "00:00:00.00";
+// Format a numeric duration into HH:MM:SS.cs
+export const formatRaceTime = (diff) => {
+  if (!diff || diff === Infinity) return "00:00:00.00";
 
-  const milliseconds = Math.floor((diff % 1000) / 10); // get centiseconds
+  const milliseconds = Math.floor((diff % 1000) / 10); // centiseconds
   const seconds = Math.floor((diff / 1000) % 60);
   const minutes = Math.floor((diff / (1000 * 60)) % 60);
   const hours = Math.floor(diff / (1000 * 60 * 60));
 
   const pad = (num) => num.toString().padStart(2, "0");
 
-  // Format: HH:MM:SS.ms
   return `${hours > 0 ? pad(hours) + ":" : ""}${pad(minutes)}:${pad(
     seconds
   )}.${pad(milliseconds)}`;
 };
 
 export const formatTime = (dateObj) => {
-  // if ("serviceWorker" in navigator) {
-  //   window.addEventListener("load", () => {
-  //     navigator.serviceWorker
-  //       .register("/service-worker.js")
-  //       .then((reg) => console.log("Service Worker Registered"))
-  //       .catch((err) => console.log("Service Worker Failed", err));
-  //   });
-  // }
   if (!dateObj) return "--:--:--";
   const d = new Date(dateObj);
   return d.toLocaleTimeString("en-US", {

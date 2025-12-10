@@ -14,7 +14,12 @@ import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { useRiderLists } from "../hooks/useRiderLists";
 
-import { formatTime, calculateRaceTime, getRiderOnTrack } from "../utils/utils"; // adjust imports
+import {
+  formatTime,
+  formatRaceTime,
+  calculateRaceDuration,
+  getRiderOnTrack,
+} from "../utils/utils"; // adjust imports
 
 const FinishLine = () => {
   const {
@@ -99,7 +104,7 @@ const FinishLine = () => {
           }`}
         >
           {showSoloStart ? (
-            "Hide Start Panel"
+            "Hide Solo Start Panel"
           ) : (
             <>
               <Zap size={16} /> Solo Start
@@ -281,8 +286,9 @@ const FinishLine = () => {
                 <div className="flex items-center gap-2 text-green-700">
                   <Timer size={16} />
                   <span className="font-mono text-lg font-bold tracking-tight">
-                    {rider.raceTime ||
-                      calculateRaceTime(rider.startTime, rider.finishTime)}
+                    {formatRaceTime(
+                      calculateRaceDuration(rider.startTime, rider.finishTime)
+                    )}
                   </span>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { Trophy, Download, FileText } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
-import { calculateRaceTime } from "../utils/utils";
+import { calculateRaceDuration, formatRaceTime } from "../utils/utils";
 
 const Results = () => {
   const { raceId } = useRaceStore();
@@ -12,18 +12,18 @@ const Results = () => {
   const downloadCSV = () => {
     // CSV Header
     const headers = [
-      ",Rank,Rider Number,Rider Name, Race Time,Start Time,Finish Time,Status",
+      ",Rank,Rider Number,Rider Name, AusCycle Number, Race Time,Start Time,Finish Time,Status",
     ];
     const raceDetails = [
       `Track Name: ${raceId}\nRace Date: ${new Date().toLocaleDateString()}`,
     ];
     // CSV Rows
     const rows = finishedRiders.map((r, index) => {
-      const raceTime = calculateRaceTime(r.startTime, r.finishTime);
+      const raceTime = calculateRaceDuration(r.startTime, r.finishTime);
       const start = new Date(r.startTime).toLocaleTimeString();
       const finish = new Date(r.finishTime).toLocaleTimeString();
-      return `,${index + 1},${r.riderNumber},${
-        r.name
+      return `,${index + 1},${r.riderNumber},${r.name},${
+        r.caLicenceNumber
       },${raceTime},${start},${finish},${r.status}`;
     });
 
@@ -88,9 +88,8 @@ const Results = () => {
               <tbody className="divide-y divide-slate-100">
                 {finishedRiders.map((rider, index) => {
                   const isWinner = index === 0;
-                  const raceTime = calculateRaceTime(
-                    rider.startTime,
-                    rider.finishTime
+                  const raceTime = formatRaceTime(
+                    calculateRaceDuration(rider.startTime, rider.finishTime)
                   );
                   return (
                     <tr
