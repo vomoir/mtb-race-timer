@@ -1,111 +1,94 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
+import toast from "react-hot-toast";
+import {
+  List,
+  Clock,
+  RefreshCw,
+  Timer,
+  Zap,
+  Flag,
+  Save,
+  Trash2,
+} from "lucide-react";
+import { Card } from "./Card";
+import { useRaceStore } from "../store/raceStore"; // Import the hook
+import { useRiderLists } from "../hooks/useRiderLists";
 
-const FinishLine = ({ user, riders, raceId, isOnline }) => {
-  const [finishing, setFinishing] = useState(null);
-  const [manualNumber, setManualNumber] = useState("");
-  const [localLogs, setLocalLogs] = useState(getLocalBackup("finishes"));
-  const [showSoloStart, setShowSoloStart] = useState(false); // Toggle for Solo/Offline mode
-  const [soloNumber, setSoloNumber] = useState("");
+import {
+  formatTime,
+  formatRaceTime,
+  calculateRaceDuration,
+  getRiderOnTrack,
+} from "../utils/utils"; // adjust imports
 
-  const ridersOnTrack = useMemo(() => {
-    return riders
-      .filter((r) => r.status === "ON_TRACK")
-      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  }, [riders]);
+const FinishLine = () => {
+  const {
+    finishing,
+    finishLogs,
+    showSoloStart,
+    soloMode,
+    soloNumber,
+    setSoloNumber,
+    setSoloMode,
+    handleSoloStart,
+    handleFinish,
+  } = useRaceStore();
 
-  const finishedRiders = useMemo(() => {
-    return riders
-      .filter((r) => r.status === "FINISHED")
-      .sort((a, b) => new Date(b.finishTime) - new Date(a.finishTime));
-  }, [riders]);
-
-  // Handle Solo Start (Manual Start)
-  const handleSoloStart = async (e) => {
-    e.preventDefault();
-    if (!soloNumber.trim() || !user) return;
-
-    const num = soloNumber.trim();
+  const [pendingFinishes, setPendingFinishes] = useState([]);
+  const { ridersOnTrack, finishedRiders } = useRiderLists();
+  const handleCapture = () => {
     const now = new Date();
-
-    const raceData = {
-      raceId: raceId,
-      raceNumber: num,
-      startTime: now.toISOString(),
-      status: "ON_TRACK",
-      startedBy: user.uid,
-      finishTime: null,
-      raceTime: null,
-      timestamp: serverTimestamp(),
-    };
-
-    try {
-      saveToLocalBackup("starts", raceData);
-      await addDoc(
-        collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-        raceData
-      );
-      setSoloNumber("");
-      setShowSoloStart(false);
-    } catch (error) {
-      console.error("Error starting rider:", error);
-    }
+    setPendingFinishes((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        timestamp: now,
+        displayTime: now.toLocaleTimeString("en-US", { hour12: false }),
+        riderNumber: "",
+      },
+    ]);
   };
 
-  const handleFinish = async (rider) => {
-    if (!user) return;
-    setFinishing(rider.id);
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const calculatedRaceTime = calculateRaceTime(rider.startTime, nowIso);
+  const handlePendingSave = (pendingItem) => {
+    if (!pendingItem.riderNumber) return;
+    // Check if rider is actually on track and get them
+    const riderOnTrack = getRiderOnTrack(
+      ridersOnTrack,
+      pendingItem.riderNumber
+    );
 
-    const finishData = {
-      status: "FINISHED",
-      finishTime: nowIso,
-      finishedBy: user.uid,
-      raceTime: calculatedRaceTime,
-    };
-
-    try {
-      saveToLocalBackup("finishes", { ...rider, ...finishData });
-      setLocalLogs(getLocalBackup("finishes"));
-      const docRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "mtb_riders",
-        rider.id
+    if (riderOnTrack) {
+      handleFinish(riderOnTrack);
+      setPendingFinishes((prev) =>
+        prev.filter((p) => p.id !== riderOnTrack.riderNumber)
       );
-      await updateDoc(docRef, finishData);
-    } catch (error) {
-      console.error("Error finishing rider:", error);
-    } finally {
-      setFinishing(null);
-      setManualNumber("");
-    }
-  };
-
-  const handleManualFinish = (e) => {
-    e.preventDefault();
-    const num = manualNumber.trim();
-    if (!num) return;
-    const rider = ridersOnTrack.find((r) => r.raceNumber === num);
-    if (rider) {
-      handleFinish(rider);
     } else {
-      alert(`Rider #${num} not found on track for Race ID: ${raceId}!`);
+      toast(`Rider #${riderOnTrack.riderNumber} is not currently on track!`);
     }
   };
 
-  const getElapsedTime = (startTime) => {
-    const start = new Date(startTime);
-    const now = new Date();
-    const diffMs = now - start;
-    const minutes = Math.floor(diffMs / 60000);
-    return `${minutes}m`;
+  const handleSave = (rider) => {
+    if (!rider.riderNumber) return;
+    // Check if rider is actually on track
+    const riderOnTrack = getRiderOnTrack(ridersOnTrack, rider.riderNumber);
+    if (riderOnTrack) {
+      handleFinish(riderOnTrack);
+      setPendingFinishes((prev) =>
+        prev.filter((p) => p.id !== riderOnTrack.riderNumber)
+      );
+    } else {
+      toast(`Rider #${rider.riderNumber} is not currently on track!`);
+    }
   };
 
+  const removePending = (rider) => {
+    setPendingFinishes((prev) => prev.filter((p) => p.id !== rider.id));
+  };
+
+  const savePending = (rider) => {
+    handleSave(rider);
+    removePending(rider);
+  };
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* SOLO START TOGGLE */}
@@ -114,7 +97,7 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
           Single User Mode
         </span>
         <button
-          onClick={() => setShowSoloStart(!showSoloStart)}
+          onClick={() => setSoloMode(!showSoloStart)}
           className={`text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
             showSoloStart
               ? "bg-slate-300 text-slate-700"
@@ -122,7 +105,7 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
           }`}
         >
           {showSoloStart ? (
-            "Hide Start Panel"
+            "Hide Solo Start Panel"
           ) : (
             <>
               <Zap size={16} /> Solo Start
@@ -130,16 +113,87 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
           )}
         </button>
       </div>
+      {/* Capture finish Section */}
+      <Card className="flex flex-col h-[500px] border-l-4 border-l-red-600">
+        <div className="p-4 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Flag className="text-red-600" size={24} />
+            Finish Line
+          </h2>
+        </div>
+        <div className="p-4">
+          <button
+            onClick={handleCapture}
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2"
+          >
+            <Timer size={32} className="text-white" />
+            <span className="text-xl font-black uppercase tracking-widest">
+              Capture Finish
+            </span>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+          {pendingFinishes.map((item, index) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 p-2 rounded-lg border-2 bg-red-50 border-red-100"
+            >
+              <div className="bg-slate-800 text-white font-mono rounded px-2 py-1 font-bold">
+                {item.displayTime}
+              </div>
+              <input
+                autoFocus={index === 0}
+                value={item.riderNumber}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPendingFinishes((prev) =>
+                    prev.map((p) =>
+                      p.id === item.id ? { ...p, riderNumber: val } : p
+                    )
+                  );
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handlePendingSave(item)}
+                placeholder="#"
+                className="flex-1 w-12 font-bold p-1 text-center border border-slate-300 rounded"
+              />
+              <button
+                title="Save"
+                onClick={() => savePending(item)}
+                className="p-1.5 rounded text-white bg-emerald-500"
+              >
+                <Save size={18} />
+              </button>
+              <button
+                onClick={() =>
+                  setPendingFinishes((prev) =>
+                    prev.filter((p) => p.id !== item.id)
+                  )
+                }
+                className="p-1.5 rounded bg-slate-200 text-slate-500"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       {/* SOLO START PANEL */}
-      {showSoloStart && (
+      {soloMode && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
           <h3 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
             <Zap size={16} /> Start Rider (Solo Mode)
           </h3>
-          <form onSubmit={handleSoloStart} className="flex gap-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSoloStart(); // call Zustand action without event
+              setSoloNumber("");
+            }}
+            className="flex gap-3"
+          >
             <input
-              type="number"
+              type="riderNumber"
               pattern="[0-9]*"
               inputMode="numeric"
               value={soloNumber}
@@ -162,33 +216,6 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
           </p>
         </div>
       )}
-
-      {/* MANUAL FINISH SECTION */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Flag className="text-red-600" size={20} />
-          Manual Finish
-        </h2>
-
-        <form onSubmit={handleManualFinish} className="flex gap-3">
-          <input
-            type="number"
-            pattern="[0-9]*"
-            inputMode="numeric"
-            value={manualNumber}
-            onChange={(e) => setManualNumber(e.target.value)}
-            className="flex-1 text-2xl font-bold p-3 text-center border-2 border-slate-300 rounded-lg focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none transition-all placeholder:text-slate-200"
-            placeholder="#"
-          />
-          <button
-            type="submit"
-            disabled={!manualNumber || finishing}
-            className="bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-6 rounded-lg shadow-md active:scale-95 transition-all flex items-center gap-2"
-          >
-            {finishing ? <RefreshCw className="animate-spin" /> : "FINISH"}
-          </button>
-        </form>
-      </div>
 
       {/* ON TRACK LIST */}
       <div>
@@ -217,22 +244,22 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
               >
                 <div>
                   <div className="text-3xl font-black text-slate-800">
-                    #{rider.raceNumber}
+                    #{rider.riderNumber}
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-1">
                     <Clock size={12} /> Started: {formatTime(rider.startTime)}
                     <span className="text-blue-600 font-medium ml-1">
-                      ({getElapsedTime(rider.startTime)})
+                      {rider.elapsedTime}
                     </span>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => handleFinish(rider)}
-                  disabled={finishing === rider.id}
+                  onClick={() => handleSave(rider)}
+                  disabled={finishing === rider.riderNumber}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-4 rounded-lg shadow-md active:scale-95 transition-all"
                 >
-                  {finishing === rider.id ? (
+                  {finishing === rider.riderNumber ? (
                     <RefreshCw className="animate-spin" />
                   ) : (
                     "FINISH"
@@ -258,7 +285,7 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
               >
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-slate-700 w-12">
-                    #{rider.raceNumber}
+                    #{rider.riderNumber}
                   </span>
                   <span className="text-xs text-slate-400">
                     ({formatTime(rider.finishTime)})
@@ -267,8 +294,9 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
                 <div className="flex items-center gap-2 text-green-700">
                   <Timer size={16} />
                   <span className="font-mono text-lg font-bold tracking-tight">
-                    {rider.raceTime ||
-                      calculateRaceTime(rider.startTime, rider.finishTime)}
+                    {formatRaceTime(
+                      calculateRaceDuration(rider.startTime, rider.finishTime)
+                    )}
                   </span>
                 </div>
               </div>
@@ -283,12 +311,12 @@ const FinishLine = ({ user, riders, raceId, isOnline }) => {
           Local Backup Log (Finishes)
         </h3>
         <div className="space-y-2">
-          {localLogs.slice(0, 5).map((log, i) => (
+          {finishLogs.slice(0, 5).map((log, i) => (
             <div
               key={i}
               className="flex justify-between items-center text-sm text-slate-600 border-b border-slate-200 pb-1 last:border-0"
             >
-              <span>#{log.raceNumber}</span>
+              <span>#{log.riderNumber}</span>
               <span className="font-mono text-xs font-bold text-green-600">
                 {log.raceTime || "--:--"}
               </span>

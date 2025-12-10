@@ -1,33 +1,33 @@
-import React, { useMemo } from "react";
+import React from "react";
+import { Trophy, Download, FileText } from "lucide-react";
 
-const Results = ({ riders, raceId, calculateRaceTime }) => {
-  const sortedResults = useMemo(() => {
-    return riders
-      .filter((r) => r.status === "FINISHED" && r.finishTime && r.startTime)
-      .map((r) => ({
-        ...r,
-        durationMs: new Date(r.finishTime) - new Date(r.startTime),
-      }))
-      .sort((a, b) => a.durationMs - b.durationMs);
-  }, [riders]);
+import { useRaceStore } from "../store/raceStore";
+import { useRiderLists } from "../hooks/useRiderLists";
+import { calculateRaceDuration, formatRaceTime } from "../utils/utils";
 
+const Results = () => {
+  const { raceId } = useRaceStore();
+
+  const { finishedRiders } = useRiderLists();
   const downloadCSV = () => {
     // CSV Header
     const headers = [
-      "Rank,Race Number,Race Time,Start Time,Finish Time,Status",
+      ",Rank,Rider Number,Rider Name, AusCycle Number, Race Time,Start Time,Finish Time,Status",
     ];
-
+    const raceDetails = [
+      `Track Name: ${raceId}\nRace Date: ${new Date().toLocaleDateString()}`,
+    ];
     // CSV Rows
-    const rows = sortedResults.map((r, index) => {
-      const raceTime = calculateRaceTime(r.startTime, r.finishTime);
+    const rows = finishedRiders.map((r, index) => {
+      const raceTime = calculateRaceDuration(r.startTime, r.finishTime);
       const start = new Date(r.startTime).toLocaleTimeString();
       const finish = new Date(r.finishTime).toLocaleTimeString();
-      return `${index + 1},${r.raceNumber},${raceTime},${start},${finish},${
-        r.status
-      }`;
+      return `,${index + 1},${r.riderNumber},${r.name},${
+        r.caLicenceNumber
+      },${raceTime},${start},${finish},${r.status}`;
     });
 
-    const csvContent = [headers, ...rows].join("\n");
+    const csvContent = [raceDetails, headers, ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -47,12 +47,12 @@ const Results = ({ riders, raceId, calculateRaceTime }) => {
             Race Results
           </h2>
           <p className="text-xs text-slate-500">
-            {sortedResults.length} riders finished
+            {finishedRiders.length} riders finished
           </p>
         </div>
         <button
           onClick={downloadCSV}
-          disabled={sortedResults.length === 0}
+          disabled={finishedRiders.length === 0}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
         >
           <Download size={16} />
@@ -61,7 +61,7 @@ const Results = ({ riders, raceId, calculateRaceTime }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {sortedResults.length === 0 ? (
+        {finishedRiders.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="mx-auto text-slate-300 mb-2" size={32} />
             <p className="text-slate-400">No race results yet.</p>
@@ -75,31 +75,22 @@ const Results = ({ riders, raceId, calculateRaceTime }) => {
                     Rank
                   </th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase">
-                    Rider
+                    Rider #
+                  </th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase">
+                    Rider Name
                   </th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">
                     Time
                   </th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right hidden sm:table-cell">
-                    Diff
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sortedResults.map((rider, index) => {
+                {finishedRiders.map((rider, index) => {
                   const isWinner = index === 0;
-                  const raceTime = calculateRaceTime(
-                    rider.startTime,
-                    rider.finishTime
+                  const raceTime = formatRaceTime(
+                    calculateRaceDuration(rider.startTime, rider.finishTime)
                   );
-                  const diff =
-                    index === 0
-                      ? "-"
-                      : `+${(
-                          (rider.durationMs - sortedResults[0].durationMs) /
-                          1000
-                        ).toFixed(2)}`;
-
                   return (
                     <tr
                       key={rider.id}
@@ -117,7 +108,12 @@ const Results = ({ riders, raceId, calculateRaceTime }) => {
                       </td>
                       <td className="p-4">
                         <div className="font-bold text-slate-800 text-lg">
-                          #{rider.raceNumber}
+                          #{rider.riderNumber}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-slate-800 text-lg">
+                          {rider.name}
                         </div>
                       </td>
                       <td className="p-4 text-right">
@@ -127,11 +123,6 @@ const Results = ({ riders, raceId, calculateRaceTime }) => {
                           }`}
                         >
                           {raceTime}
-                        </div>
-                      </td>
-                      <td className="p-4 text-right hidden sm:table-cell">
-                        <div className="font-mono text-xs text-red-500 font-medium">
-                          {diff}
                         </div>
                       </td>
                     </tr>

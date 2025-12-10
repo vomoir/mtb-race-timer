@@ -1,12 +1,16 @@
 import React, { useState } from "react";
+import { useRaceStore } from "../store/raceStore";
+import { Clock, LogIn, Hash } from "lucide-react";
 
-const LoginScreen = ({ onJoin }) => {
+const LoginScreen = () => {
   const [inputId, setInputId] = useState("");
+  const setRaceId = useRaceStore((state) => state.setRaceId);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (inputId.trim()) {
-      onJoin(inputId.trim().toUpperCase());
+      // Call the store action directly
+      setRaceId(inputId.trim().toUpperCase());
     }
   };
 
