@@ -26,9 +26,10 @@ const FinishLine = () => {
     finishing,
     finishLogs,
     showSoloStart,
+    soloMode,
     soloNumber,
     setSoloNumber,
-    toggleSoloStart,
+    setSoloMode,
     handleSoloStart,
     handleFinish,
   } = useRaceStore();
@@ -96,7 +97,7 @@ const FinishLine = () => {
           Single User Mode
         </span>
         <button
-          onClick={() => toggleSoloStart(!showSoloStart)}
+          onClick={() => setSoloMode(!showSoloStart)}
           className={`text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
             showSoloStart
               ? "bg-slate-300 text-slate-700"
@@ -178,12 +179,19 @@ const FinishLine = () => {
       </Card>
 
       {/* SOLO START PANEL */}
-      {showSoloStart && (
+      {soloMode && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
           <h3 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
             <Zap size={16} /> Start Rider (Solo Mode)
           </h3>
-          <form onSubmit={handleSoloStart} className="flex gap-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSoloStart(); // call Zustand action without event
+              setSoloNumber("");
+            }}
+            className="flex gap-3"
+          >
             <input
               type="riderNumber"
               pattern="[0-9]*"

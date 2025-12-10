@@ -13,6 +13,7 @@ import {
   orderBy,
   where,
 } from "firebase/firestore";
+
 import {
   onAuthStateChanged,
   signInAnonymously,
@@ -27,6 +28,28 @@ import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
 import { calculateRaceDuration } from "../utils/utils.js"; // adjust imports
 
 export const useRaceStore = create((set, get) => ({
+  queueStart: (riderData) => {
+    const existing = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
+    existing.push(riderData);
+    localStorage.setItem("pendingStarts", JSON.stringify(existing));
+  },
+  syncPendingStarts: async () => {
+    const pending = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
+    if (pending.length === 0) return;
+    const collectionRef = collection(
+      db,
+      "artifacts",
+      appId,
+      "public",
+      "data",
+      "mtb_riders"
+    );
+    for (const rider of pending) {
+      await addDoc(collectionRef, rider);
+    }
+    localStorage.removeItem("pendingStarts");
+  },
+
   // Auth state
   user: null,
   authLoading: true,
@@ -72,7 +95,6 @@ export const useRaceStore = create((set, get) => ({
 
   // Starter state
   riderNumber: "",
-  loading: false,
   lastStarted: null,
   localLogs: getLocalBackup("starts"),
 
@@ -99,25 +121,59 @@ export const useRaceStore = create((set, get) => ({
     set({ riderNumber: num });
   },
 
+  finishing: null,
+  finishLogs: getLocalBackup("finishes"),
+  loading: false,
   setLoading: (val) => set({ loading: val }),
+  soloMode: false,
+  setSoloMode: (val) => set({ soloMode: val }),
+  showSoloStart: false,
+  soloNumber: "",
+  setSoloNumber: (num) => set({ soloNumber: num }),
 
   handleStart: async (raceId, riderNumber) => {
     if (!riderNumber.trim()) return;
     const { riders } = get();
+    const existingRider = riders.find((r) => r.riderNumber === riderNumber);
 
     // THE GUARD CLAUSE: Check if this rider is already active or finished
     // We check against 'riderNumber'
     const nowIso = new Date().toISOString();
-    const existingRider = riders.find((r) => r.riderNumber === riderNumber);
 
-    const id = existingRider.id;
-    console.log(`existing rider id ${id}`);
-
-    if (existingRider) {
+    if (!existingRider) {
+      // SCENARIO: NEW "AD-HOC" RIDER (Was not in the system)
+      const newRiderData = {
+        raceId,
+        riderNumber: riderNumber,
+        firstName: "Rider",
+        lastName: "Not Registered",
+        startTime: nowIso,
+        status: "ON_TRACK",
+        finishTime: null,
+        raceTime: null,
+        timestamp: serverTimestamp(),
+      };
+      const collectionRef = collection(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "mtb_riders"
+      );
+      try {
+        await addDoc(collectionRef, newRiderData);
+        saveToLocalBackup("starts", newRiderData);
+      } catch (err) {
+        console.error("Error adding ad-hoc rider:", err);
+        saveToLocalBackup("starts", { ...newRiderData, offline: true });
+      }
+    } else {
       if (existingRider.status === "ON_TRACK") {
         toast.error(`Rider #${riderNumber} is ALREADY on track!`);
         return;
       }
+
       // SCENARIO: UPDATING AN EXISTING RIDER (e.g. moving from WAITING to ON_TRACK)
       const docRef = doc(
         db,
@@ -142,23 +198,6 @@ export const useRaceStore = create((set, get) => ({
         );
         if (!confirmReRun) return;
       }
-    } else {
-      // SCENARIO: NEW "AD-HOC" RIDER (Was not in the system)
-      const newRiderData = {
-        raceId,
-        riderNumber: riderNumber,
-        startTime: nowIso,
-        status: "ON_TRACK",
-        finishTime: null,
-        raceTime: null,
-        timestamp: serverTimestamp(),
-      };
-
-      await addDoc(
-        collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-        newRiderData
-      );
-      saveToLocalBackup("starts", newRiderData);
     }
     set({ loading: false });
   },
@@ -211,45 +250,13 @@ export const useRaceStore = create((set, get) => ({
     // 4. Return unsubscribe so useEffect can clean up
     return unsubscribe;
   },
-  // Finish state
-  finishing: null,
-  finishLogs: getLocalBackup("finishes"),
-  showSoloStart: false,
-  soloNumber: "",
-  setSoloNumber: (num) => set({ soloNumber: num }),
-  toggleSoloStart: (val) => set({ showSoloStart: val }),
-
-  handleSoloStart: async (user, raceId) => {
-    const { soloNumber } = get();
-    if (!soloNumber.trim() || !user) return;
-
-    const num = soloNumber.trim();
-    const now = new Date();
-
-    const raceData = {
-      raceId,
-      riderNumber: num,
-      startTime: now.toISOString(),
-      status: "ON_TRACK",
-      startedBy: user.uid,
-      finishTime: null,
-      raceTime: null,
-      timestamp: serverTimestamp(),
-    };
-
-    try {
-      saveToLocalBackup("starts", raceData);
-      await addDoc(
-        collection(db, "artifacts", appId, "public", "data", "mtb_riders"),
-        raceData
-      );
-      set({ soloNumber: "", showSoloStart: false });
-    } catch (error) {
-      toast.error(`Error starting rider: ${error}`);
-      console.error("Error starting rider:", error);
-    }
+  handleSoloStart: async () => {
+    const { soloNumber, raceId, handleStart } = get();
+    if (!soloNumber.trim()) return;
+    handleStart(raceId, soloNumber);
   },
 
+  // Finish state
   handleFinish: async (rider) => {
     if (!rider) return;
     set({ finishing: rider.id });

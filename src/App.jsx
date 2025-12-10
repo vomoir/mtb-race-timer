@@ -59,6 +59,12 @@ export default function App() {
   }, [subscribeToRiders, raceId]);
 
   useEffect(() => {
+    window.addEventListener("online", () =>
+      useRaceStore.getState().syncPendingStarts()
+    );
+  }, []);
+
+  useEffect(() => {
     // Pass raceId here if you have one, or leave empty
     const unsubscribe = subscribeToRiders();
 
@@ -87,12 +93,6 @@ export default function App() {
       unsubPromise.then((unsub) => unsub && unsub());
     };
   }, [initAuth]);
-
-  // 2. Real-time Listener filtered by RACE ID
-  // useEffect(() => {
-  //   subscribeToRiders(raceId);
-  //   return () => clearRiders();
-  // }, [raceId, subscribeToRiders, clearRiders]);
 
   // start ticking every 5s
   useEffect(() => {
