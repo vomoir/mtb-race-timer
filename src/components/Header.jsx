@@ -60,7 +60,7 @@ const Header = () => {
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <File size={18} /> Rider Registration
+          <File size={18} /> Register
         </button>
         <button
           onClick={() => setActiveTab("starter")}
@@ -90,7 +90,7 @@ const Header = () => {
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Trophy size={18} /> Results
+          <Trophy size={18} /> Resulter
         </button>
       </div>
     </div>
