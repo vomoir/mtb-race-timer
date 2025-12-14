@@ -80,7 +80,7 @@ const Header = () => {
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Flag size={18} /> Finish Line
+          <Flag size={18} /> Finisher
         </button>
         <button
           onClick={() => setActiveTab("results")}
