@@ -24,7 +24,7 @@ const Results = () => {
       );
       const start = new Date(r.startTime).toLocaleTimeString();
       const finish = new Date(r.finishTime).toLocaleTimeString();
-      return `,${index + 1},${r.riderNumber},${r.name},${
+      return `,${index + 1},${r.riderNumber},${r.firstName} ${r.lastName},${
         r.caLicenceNumber
       },${raceTime},${start},${finish},${r.status}`;
     });

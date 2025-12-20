@@ -94,7 +94,7 @@ export default function RiderRegistration() {
         riderNumber: "103",
         firstName: "Rachel",
         lastName: "Atherton",
-        caLicenceNumber: "Ac915589",
+        caLicenceNumber: "Ac912589",
         category: "Elite",
         status: "WAITING",
         startTime: null,

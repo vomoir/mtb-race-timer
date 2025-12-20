@@ -72,6 +72,7 @@ const FinishLine = () => {
     // Check if rider is actually on track
     const riderOnTrack = getRiderOnTrack(ridersOnTrack, rider.riderNumber);
     if (riderOnTrack) {
+      riderOnTrack.finishTime = rider.timestamp || new Date();
       handleFinish(riderOnTrack);
       setPendingFinishes((prev) =>
         prev.filter((p) => p.id !== riderOnTrack.riderNumber)
