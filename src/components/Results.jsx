@@ -3,7 +3,6 @@ import { Trophy, Download, FileText } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
-import { calculateRaceDuration, formatRaceTime } from "../utils/utils";
 
 const Results = () => {
   const { raceId } = useRaceStore();
@@ -19,11 +18,9 @@ const Results = () => {
     ];
     // CSV Rows
     const rows = finishedRiders.map((r, index) => {
-      const raceTime = formatRaceTime(
-        calculateRaceDuration(r.startTime, r.finishTime)
-      );
-      const start = new Date(r.startTime).toLocaleTimeString();
-      const finish = new Date(r.finishTime).toLocaleTimeString();
+      const raceTime = r.raceTime;
+      const start = r.startTime;
+      const finish = r.finishTime;
       return `,${index + 1},${r.riderNumber},${r.firstName} ${r.lastName},${
         r.caLicenceNumber
       },${raceTime},${start},${finish},${r.status}`;
@@ -90,9 +87,6 @@ const Results = () => {
               <tbody className="divide-y divide-slate-100">
                 {finishedRiders.map((rider, index) => {
                   const isWinner = index === 0;
-                  const raceTime = formatRaceTime(
-                    calculateRaceDuration(rider.startTime, rider.finishTime)
-                  );
                   return (
                     <tr
                       key={rider.id}
@@ -124,7 +118,7 @@ const Results = () => {
                             isWinner ? "text-green-600" : "text-slate-700"
                           }`}
                         >
-                          {raceTime}
+                          {rider.raceTime}
                         </div>
                       </td>
                     </tr>

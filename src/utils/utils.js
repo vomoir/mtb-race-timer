@@ -72,3 +72,29 @@ export function getRiderOnTrack(ridersOnTrack, riderNumber) {
   if (!Array.isArray(ridersOnTrack)) return null;
   return ridersOnTrack.find((r) => r.riderNumber === riderNumber);
 }
+
+export const getTime = () => {
+  const now = new Date();
+  const nowIso = now.toLocaleTimeString("en-US", { hour12: false });
+  return nowIso;
+};
+
+const timeToSeconds = (timeStr) => {
+  const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+  return hours * 3600 + minutes * 60 + seconds;
+};
+
+export const calculateTimeDifference = (time1, time2) => {
+  const diffInSeconds = Math.abs(timeToSeconds(time2) - timeToSeconds(time1));
+
+  // Convert back to HH:MM:SS
+  const h = Math.floor(diffInSeconds / 3600)
+    .toString()
+    .padStart(2, "0");
+  const m = Math.floor((diffInSeconds % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = (diffInSeconds % 60).toString().padStart(2, "0");
+
+  return `${h}:${m}:${s}`;
+};

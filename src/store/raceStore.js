@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
-// import { normalizeRiders } from "../utils/normalizeRiders.js";
+import { getTime, calculateTimeDifference } from "../utils/utils.js";
 
 import {
   addDoc,
@@ -25,7 +25,7 @@ import {
 import { db, appId, auth } from "../modules/firebase";
 
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
-import { calculateRaceDuration } from "../utils/utils.js"; // adjust imports
+// import { calculateRaceDuration } from "../utils/utils.js"; // adjust imports
 
 export const useRaceStore = create((set, get) => ({
   queueStart: (riderData) => {
@@ -138,7 +138,7 @@ export const useRaceStore = create((set, get) => ({
 
     // THE GUARD CLAUSE: Check if this rider is already active or finished
     // We check against 'riderNumber'
-    const nowIso = new Date().toISOString();
+    const nowIso = getTime();
 
     if (!existingRider) {
       // SCENARIO: NEW "AD-HOC" RIDER (Was not in the system)
@@ -260,14 +260,15 @@ export const useRaceStore = create((set, get) => ({
   handleFinish: async (rider) => {
     if (!rider) return;
     set({ finishing: rider.id });
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const calculatedRaceTime = calculateRaceDuration(rider.startTime, nowIso);
+
+    const calculatedRaceTime = calculateTimeDifference(
+      rider.startTime,
+      rider.finishTime
+    );
 
     const finishData = {
       status: "FINISHED",
-      finishTime: nowIso,
-      // finishedBy: user.uid,
+      finishTime: rider.finishTime,
       raceTime: calculatedRaceTime,
     };
 

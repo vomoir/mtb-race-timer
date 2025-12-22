@@ -13,13 +13,9 @@ import {
 import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { useRiderLists } from "../hooks/useRiderLists";
+import { getTime } from "../utils/utils.js";
 
-import {
-  formatTime,
-  formatRaceTime,
-  calculateRaceDuration,
-  getRiderOnTrack,
-} from "../utils/utils"; // adjust imports
+import { getRiderOnTrack } from "../utils/utils"; // adjust imports
 
 const FinishLine = () => {
   const {
@@ -37,13 +33,14 @@ const FinishLine = () => {
   const [pendingFinishes, setPendingFinishes] = useState([]);
   const { ridersOnTrack, finishedRiders } = useRiderLists();
   const handleCapture = () => {
-    const now = new Date();
+    // const now = new Date();
     setPendingFinishes((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        timestamp: now,
-        displayTime: now.toLocaleTimeString("en-US", { hour12: false }),
+        finishTime: getTime(),
+        // displayTime: now.toLocaleTimeString("en-US", { hour12: false }),
+        displayTime: getTime(),
         riderNumber: "",
       },
     ]);
@@ -72,7 +69,7 @@ const FinishLine = () => {
     // Check if rider is actually on track
     const riderOnTrack = getRiderOnTrack(ridersOnTrack, rider.riderNumber);
     if (riderOnTrack) {
-      riderOnTrack.finishTime = rider.timestamp || new Date();
+      riderOnTrack.finishTime = rider.finishTime ?? getTime();
       handleFinish(riderOnTrack);
       setPendingFinishes((prev) =>
         prev.filter((p) => p.id !== riderOnTrack.riderNumber)
@@ -158,7 +155,7 @@ const FinishLine = () => {
                 className="flex-1 w-12 font-bold p-1 text-center border border-slate-300 rounded"
               />
               <button
-                title="Save"
+                title="Save Captured Time"
                 onClick={() => savePending(item)}
                 className="p-1.5 rounded text-white bg-emerald-500"
               >
@@ -248,7 +245,7 @@ const FinishLine = () => {
                     #{rider.riderNumber}
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-1">
-                    <Clock size={12} /> Started: {formatTime(rider.startTime)}
+                    <Clock size={12} /> Started: {rider.startTime}
                     <span className="text-blue-600 font-medium ml-1">
                       {rider.elapsedTime}
                     </span>
@@ -289,15 +286,13 @@ const FinishLine = () => {
                     #{rider.riderNumber}
                   </span>
                   <span className="text-xs text-slate-400">
-                    ({formatTime(rider.finishTime)})
+                    {rider.finishTime}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-green-700">
                   <Timer size={16} />
                   <span className="font-mono text-lg font-bold tracking-tight">
-                    {formatRaceTime(
-                      calculateRaceDuration(rider.startTime, rider.finishTime)
-                    )}
+                    {rider.raceTime}
                   </span>
                 </div>
               </div>
