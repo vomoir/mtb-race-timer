@@ -1,7 +1,11 @@
 // firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
@@ -24,7 +28,13 @@ const firebaseConfig = {
 // Initialize once
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Initialize Firestore with modern persistent cache
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    // This allows multiple tabs to share the same offline cache
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 
 // App ID fallback (if you still need a separate identifier)
 export const appId = firebaseConfig.appId;

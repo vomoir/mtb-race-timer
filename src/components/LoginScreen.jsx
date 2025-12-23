@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { Clock, LogIn, Hash } from "lucide-react";
+import { InstallButton } from "./InstallButton";
 
 const LoginScreen = () => {
   const [inputId, setInputId] = useState("");
@@ -20,6 +21,9 @@ const LoginScreen = () => {
         <div className="text-center mb-8">
           <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Clock className="text-blue-600" size={32} />
+          </div>
+          <div className="flex items-center justify-center mx-auto">
+            <InstallButton />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">
             Race Coordinator
