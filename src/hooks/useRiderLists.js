@@ -21,7 +21,8 @@ export function useRiderLists() {
     return riders
       .filter((r) => r.status === "FINISHED")
       .sort((a, b) => {
-        return a.raceTime.localeCompare(b.raceTime);
+        // Use the raw millisecond number, not the string
+        return (a.durationMs || 0) - (b.durationMs || 0);
       });
   }, [riders]);
 

@@ -13,7 +13,7 @@ import {
 import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { useRiderLists } from "../hooks/useRiderLists";
-import { getTime } from "../utils/utils.js";
+import { getTime, getTimeMs } from "../utils/utils.js";
 
 import { getRiderOnTrack } from "../utils/utils"; // adjust imports
 
@@ -39,7 +39,7 @@ const FinishLine = () => {
       {
         id: crypto.randomUUID(),
         finishTime: getTime(),
-        // displayTime: now.toLocaleTimeString("en-US", { hour12: false }),
+        finishTimeMs: getTimeMs(),
         displayTime: getTime(),
         riderNumber: "",
       },
@@ -70,6 +70,7 @@ const FinishLine = () => {
     const riderOnTrack = getRiderOnTrack(ridersOnTrack, rider.riderNumber);
     if (riderOnTrack) {
       riderOnTrack.finishTime = rider.finishTime ?? getTime();
+      riderOnTrack.finishTimeMs = rider.finishTimeMs ?? getTimeMs(); // The numeric timestamp
       handleFinish(riderOnTrack);
       setPendingFinishes((prev) =>
         prev.filter((p) => p.id !== riderOnTrack.riderNumber)

@@ -60,12 +60,18 @@ export const getLocalBackup = (type) => {
 
 export const formatDuration = (ms) => {
   if (ms === null || ms === undefined) return "--:--.--";
-  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
   const seconds = Math.floor((ms % 60000) / 1000);
+  // 2. Get the hundredths (e.g., .45 instead of .450)
+  // We take the remainder of 1000ms and divide by 10
   const centis = Math.floor((ms % 1000) / 10);
-  return `${minutes.toString().padStart(2, "0")}:${seconds
-    .toString()
-    .padStart(2, "0")}.${centis.toString().padStart(2, "0")}`;
+  const h = hours.toString().padStart(2, "0");
+  const m = minutes.toString().padStart(2, "0");
+  const s = seconds.toString().padStart(2, "0");
+  const cs = centis.toString().padStart(2, "0");
+
+  return `${h}:${m}:${s}.${cs}`;
 };
 
 export function getRiderOnTrack(ridersOnTrack, riderNumber) {
@@ -77,6 +83,10 @@ export const getTime = () => {
   const now = new Date();
   const nowIso = now.toLocaleTimeString("en-US", { hour12: false });
   return nowIso;
+};
+
+export const getTimeMs = () => {
+  return Date.now();
 };
 
 const timeToSeconds = (timeStr) => {
@@ -97,4 +107,13 @@ export const calculateTimeDifference = (time1, time2) => {
   const s = (diffInSeconds % 60).toString().padStart(2, "0");
 
   return `${h}:${m}:${s}`;
+};
+// Helper: Convert "HH:MM:SS" string to today's Unix Milliseconds
+export const timeStringToMs = (timeStr) => {
+  if (!timeStr || typeof timeStr !== "string") return null;
+
+  const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+  const date = new Date(); // Gets today's date
+  date.setHours(hours, minutes, seconds, 0); // Sets the time on today's date
+  return date.getTime();
 };
