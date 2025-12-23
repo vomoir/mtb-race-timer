@@ -109,7 +109,7 @@ const Results = () => {
                       </td>
                       <td className="p-4">
                         <div className="font-bold text-slate-800 text-lg">
-                          {rider.name}
+                          {rider.firstName} {rider.lastName}
                         </div>
                       </td>
                       <td className="p-4 text-right">

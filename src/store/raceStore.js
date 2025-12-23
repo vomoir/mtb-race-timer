@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
-import { getTime, calculateTimeDifference } from "../utils/utils.js";
+import { getTime, formatDuration } from "../utils/utils.js";
 
 import {
   addDoc,
@@ -139,6 +139,7 @@ export const useRaceStore = create((set, get) => ({
     // THE GUARD CLAUSE: Check if this rider is already active or finished
     // We check against 'riderNumber'
     const nowIso = getTime();
+    const nowMs = Date.now(); // The numeric timestamp
 
     if (!existingRider) {
       // SCENARIO: NEW "AD-HOC" RIDER (Was not in the system)
@@ -148,9 +149,12 @@ export const useRaceStore = create((set, get) => ({
         firstName: "Rider",
         lastName: "Not Registered",
         startTime: nowIso,
+        startTimeMs: nowMs,
         status: "ON_TRACK",
         finishTime: null,
+        finishTimeMs: null,
         raceTime: null,
+        durationMs: null,
         timestamp: serverTimestamp(),
       };
       const collectionRef = collection(
@@ -187,6 +191,7 @@ export const useRaceStore = create((set, get) => ({
 
       await updateDoc(docRef, {
         startTime: nowIso,
+        startTimeMs: nowMs,
         status: "ON_TRACK",
         riderNumber: riderNumber,
         // We don't change raceId or riderNumber, they are already there
@@ -261,21 +266,37 @@ export const useRaceStore = create((set, get) => ({
     if (!rider) return;
     set({ finishing: rider.id });
 
-    const calculatedRaceTime = calculateTimeDifference(
-      rider.startTime,
-      rider.finishTime
-    );
+    // Get Start Time in Milliseconds
+    const start = rider.startTimeMs || new Date(rider.startTime).getTime();
+    // Get Finish Time in Milliseconds
+    // (We ensure it's a number, whether it came from handleCapture or Date.now())
+    const end = rider.finishTimeMs || new Date(rider.finishTime).getTime();
+    // Simple numeric subtraction (No more NaN!)
+
+    // Validate and Calculate Duration
+    if (!start || isNaN(start) || isNaN(end)) {
+      console.error("Invalid timing data:", { start, end });
+      set({ finishing: null });
+      return;
+    }
+
+    const durationMs = end - start;
+    const finalDuration = durationMs < 0 ? 0 : durationMs;
+
+    const raceTimeStr = formatDuration(finalDuration);
+
+    // Normalize Start Time to Milliseconds
+    // Handles Firestore Timestamps, Date objects, or ISO strings
 
     const finishData = {
       status: "FINISHED",
       finishTime: rider.finishTime,
-      raceTime: calculatedRaceTime,
+      durationMs: finalDuration, // CRUCIAL: Used for sorting
+      raceTime: raceTimeStr,
     };
 
+    // 5. Save to Firestore
     try {
-      saveToLocalBackup("finishes", { ...rider, ...finishData });
-      set({ finishLogs: getLocalBackup("finishes") });
-
       const docRef = doc(
         db,
         "artifacts",
@@ -286,6 +307,16 @@ export const useRaceStore = create((set, get) => ({
         rider.id
       );
       await updateDoc(docRef, finishData);
+    } catch (error) {
+      console.error("Error saving finish:", error);
+      toast.error("Failed to save result");
+    } finally {
+      set({ finishing: null });
+    }
+
+    try {
+      saveToLocalBackup("finishes", { ...rider, ...finishData });
+      set({ finishLogs: getLocalBackup("finishes") });
       // Optional: Optimistic update (update local state immediately)
       // The subscription will eventually update it, but this makes UI snappy
       set((state) => ({
