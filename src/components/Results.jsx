@@ -36,7 +36,58 @@ const Results = () => {
     link.click();
     document.body.removeChild(link);
   };
+const exportResultsCSV = (riders, raceId) => {
+  // 1. Filter for finished riders and group by Category
+  const finished = riders.filter(r => r.status === "FINISHED");
+  
+  // Grouping logic
+  const grouped = finished.reduce((acc, rider) => {
+    const cat = rider.category || "Uncategorized";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(rider);
+    return acc;
+  }, {});
 
+  // 2. Setup CSV Headers
+  let csvContent = "Rank,Rider Number,Rider Name,AusCycle Number,Race Time,Start Time,Finish Time,Status\n";
+
+  // 3. Process each category
+  Object.keys(grouped).sort().forEach(category => {
+    csvContent += `--- CATEGORY: ${category} ---\n`;
+    
+    // Sort riders within this category by durationMs
+    const sortedRiders = grouped[category].sort((a, b) => 
+      (a.durationMs || 0) - (b.durationMs || 0)
+    );
+
+    sortedRiders.forEach((r, index) => {
+      const row = [
+        index + 1,                                   // Rank
+        `"${r.riderNumber}"`,                        // Rider Number
+        `"${r.firstName} ${r.lastName}"`,           // Rider Name
+        `"${r.caLicenceNumber || ''}"`,              // AusCycle Number
+        r.raceTime,                                  // Race Time (00:00:30.45)
+        r.startTime,                                 // Start Time (19:33:42)
+        // Convert Finish Ms back to readable time if needed
+        new Date(r.finishTimeMs).toLocaleTimeString("en-AU", { hour12: false }), 
+        r.status
+      ].join(",");
+      csvContent += row + "\n";
+    });
+    csvContent += "\n"; // Space between categories
+  });
+
+  // 4. Create download link
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Race_Results_${raceId}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -56,6 +107,21 @@ const Results = () => {
         >
           <Download size={16} />
           Export CSV
+        </button>
+        <button 
+          onClick={() => exportResultsCSV(finishedRiders, raceId)}
+          className="export-button"
+          style={{
+            backgroundColor: '#4CAF50', // Professional Green
+            color: 'white',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          📥 Export CSV (By Category)
         </button>
       </div>
 

@@ -3,7 +3,29 @@ import { useMemo } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { calculateTimeDifference, getTime } from "../utils/utils";
 
-export function useRiderLists() {
+export const useRiderLists = (riders) => {
+  const activeRaceId = useRaceStore((state) => state.activeRaceId);
+
+  const finishedRiders = useMemo(() => {
+    return riders
+      .filter((r) => 
+        r.status === "FINISHED" && 
+        r.raceId === activeRaceId // Only show riders for the selected session
+      )
+      .sort((a, b) => (a.durationMs || 0) - (b.durationMs || 0));
+  }, [riders, activeRaceId]);
+
+  const ridersOnTrack = useMemo(() => {
+    return riders.filter((r) => 
+      r.status === "ON_TRACK" && 
+      r.raceId === activeRaceId
+    );
+  }, [riders, activeRaceId]);
+
+  return { finishedRiders, ridersOnTrack };
+};
+
+export function useRiderListsCurrent() {
   const riders = useRaceStore((state) => state.riders);
   const now = getTime();
 

@@ -3,6 +3,7 @@ import { Play, RefreshCw, CheckCircle, ArrowUp } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { formatTime } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
+import SessionPicker from "./SessionPicker";
 const StarterComponent = () => {
   const {
     riderNumber,
@@ -38,6 +39,11 @@ const StarterComponent = () => {
             {waitingRiders.length} waiting
           </span>
         </h2>
+            <div className="session-picker">
+      <label>Select Race Session: </label>
+      <SessionPicker />
+    </div>
+
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-500 mb-1">

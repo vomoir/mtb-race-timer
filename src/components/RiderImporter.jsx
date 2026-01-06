@@ -3,6 +3,7 @@ import { Users } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { Card } from "./Card";
+import { demoRiders } from "../utils/demoData";
 
 export default function RiderRegistration() {
   const [activeTab, setActiveTab] = useState("import");
@@ -66,53 +67,6 @@ export default function RiderRegistration() {
     reader.readAsText(file);
   };
   const loadDemoData = () => {
-    const demoRiders = [
-      {
-        riderNumber: "101",
-        firstName: "Sam",
-        lastName: "Hill",
-        caLicenceNumber: "A011249",
-        category: "Elite",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-      {
-        riderNumber: "102",
-        name: "Greg Minnaar",
-        firstName: "Greg",
-        lastName: "Minaar",
-        caLicenceNumber: "Ac615589",
-        category: "Elite",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-      {
-        riderNumber: "103",
-        firstName: "Rachel",
-        lastName: "Atherton",
-        caLicenceNumber: "Ac912589",
-        category: "Elite",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-      {
-        riderNumber: "201",
-        firstName: "Clem",
-        lastName: "Fandango",
-        caLicenceNumber: "Ac917589",
-        category: "Junior",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-    ];
     setRiders(demoRiders);
     importRidersToDb(demoRiders);
     toast.success("Demo data loaded!");

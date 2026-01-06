@@ -25,7 +25,6 @@ import {
 import { db, appId, auth } from "../modules/firebase";
 
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
-// import { calculateRaceDuration } from "../utils/utils.js"; // adjust imports
 
 export const useRaceStore = create((set, get) => ({
   queueStart: (riderData) => {
@@ -53,7 +52,13 @@ export const useRaceStore = create((set, get) => ({
   // Auth state
   user: null,
   authLoading: true,
-
+// activeRaceId: new Date().toISOString().split('T')[0], // Default to today's date "YYYY-MM-DD"  
+//   setActiveRaceId: (id) => set({ activeRaceId: id }),
+//   // When adding/loading riders, ensure they get the activeRaceId
+//   addRider: (riderData) => {
+//     const { activeRaceId } = get();
+//     // ... logic to save to Firestore including raceId: activeRaceId
+//   },
   initAuth: async () => {
     await setPersistence(auth, browserLocalPersistence);
     // sign in anonymously if not already signed in
