@@ -7,6 +7,9 @@ export const useRiderLists = (riders) => {
   const activeRaceId = useRaceStore((state) => state.activeRaceId);
 
   const finishedRiders = useMemo(() => {
+    // 1. Safe-guard: If riders is undefined or null, return an empty array
+    if (!riders) return [];
+    
     return riders
       .filter((r) => 
         r.status === "FINISHED" && 

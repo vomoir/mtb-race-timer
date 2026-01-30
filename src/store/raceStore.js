@@ -27,6 +27,8 @@ import { db, appId, auth } from "../modules/firebase";
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
 
 export const useRaceStore = create((set, get) => ({
+  riders: [],
+  activeRaceId: new Date().toISOString().split('T')[0], // Default to today's date "YYYY-MM-DD"  
   queueStart: (riderData) => {
     const existing = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
     existing.push(riderData);
@@ -52,13 +54,48 @@ export const useRaceStore = create((set, get) => ({
   // Auth state
   user: null,
   authLoading: true,
-// activeRaceId: new Date().toISOString().split('T')[0], // Default to today's date "YYYY-MM-DD"  
-//   setActiveRaceId: (id) => set({ activeRaceId: id }),
-//   // When adding/loading riders, ensure they get the activeRaceId
-//   addRider: (riderData) => {
-//     const { activeRaceId } = get();
-//     // ... logic to save to Firestore including raceId: activeRaceId
-//   },
+
+  setActiveRaceId: (id) => set({ activeRaceId: id }),
+  // When adding/loading riders, ensure they get the activeRaceId
+// Inside your create((set, get) => ({ ... }))
+addRider: async (riderData) => {
+  const { activeRaceId } = get();
+  
+  // 1. Prepare the complete rider object
+  const newRider = {
+    // Spread the incoming data (riderNumber, firstName, lastName, etc.)
+    ...riderData,
+    
+    // Session Tracking
+    raceId: activeRaceId,
+    status: "WAITING",
+    createdAt: serverTimestamp(), // Good for secondary sorting if needed
+
+    // Initialize Timing Fields as null to prevent calculation errors
+    startTime: null,
+    startTimeMs: null,
+    finishTime: null,
+    finishTimeMs: null,
+    durationMs: null,
+    raceTime: null,
+  };
+
+  try {
+    // 2. Save to Firestore
+    const docRef = await addDoc(collection(db, "riders"), newRider);
+    
+    // 3. Update Local State (Optimistic UI)
+    // We add the ID returned by Firestore so we can update this rider later
+    set((state) => ({
+      riders: [...state.riders, { ...newRider, id: docRef.id }]
+    }));
+
+    return { success: true, id: docRef.id };
+  } catch (error) {
+    console.error("Error adding rider to session:", error);
+    return { success: false, error };
+  }
+},
   initAuth: async () => {
     await setPersistence(auth, browserLocalPersistence);
     // sign in anonymously if not already signed in
@@ -113,7 +150,10 @@ export const useRaceStore = create((set, get) => ({
   isOnline: navigator.onLine,
   setIsOnline: (status) => set({ isOnline: status }),
   riders: [],
-  setRiders: (riders) => set({ riders }),
+  setRiders: (riders) => set({ 
+    riders, 
+    isLoading: false // Set to false once data arrives
+  }),
   unsubscribeRiders: null,
   clearRiders: () => {
     const prevUnsub = get().unsubscribeRiders;

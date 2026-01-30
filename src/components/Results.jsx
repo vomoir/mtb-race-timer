@@ -3,11 +3,12 @@ import { Trophy, Download, FileText } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
+import { TableSkeleton } from '../components/LoadingStates';
 
 const Results = () => {
-  const { raceId } = useRaceStore();
+  const { raceId, activeRaceId, isLoading, riders } = useRaceStore();
 
-  const { finishedRiders } = useRiderLists();
+  const { finishedRiders } = useRiderLists(riders);
   const downloadCSV = () => {
     // CSV Header
     const headers = [
@@ -31,7 +32,7 @@ const Results = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `${raceId}_Results.csv`);
+    link.setAttribute("download", `Results_${activeRaceId}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -96,10 +97,16 @@ const exportResultsCSV = (riders, raceId) => {
             <Trophy className="text-yellow-500" size={20} />
             Race Results
           </h2>
-          <p className="text-xs text-slate-500">
-            {finishedRiders.length} riders finished
-          </p>
-        </div>
+          {isLoading ? (
+            <TableSkeleton rows={8} />
+          ) : finishedRiders.length === 0 ? (
+            <p className="text-gray-500">No finishers yet for this session.</p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              {finishedRiders.length} riders finished
+            </p>
+          )}
+          </div>
         <button
           onClick={downloadCSV}
           disabled={finishedRiders.length === 0}
@@ -192,7 +199,8 @@ const exportResultsCSV = (riders, raceId) => {
                 })}
               </tbody>
             </table>
-          </div>
+            
+          </div>    
         )}
       </div>
     </div>
