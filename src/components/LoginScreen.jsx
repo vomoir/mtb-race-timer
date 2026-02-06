@@ -11,7 +11,7 @@ const LoginScreen = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (eventName.trim()) {
-      navigate('/registration'); // Move to the next step
+      navigate('/starter'); // Move to the next step
     }
   };
 
