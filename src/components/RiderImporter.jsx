@@ -164,7 +164,7 @@ export default function RiderRegistration() {
           </div>
         </div>
       )}
-
+{/* TODO: break this out into its own component */}
       {activeTab === "manual" && (
         <form onSubmit={handleManualSubmit} className="space-y-4">
           <div>
@@ -230,24 +230,6 @@ export default function RiderRegistration() {
           </button>
         </form>
       )}
-      {/* Summary List */}
-      {/* <div className="mt-6">
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">Registered Riders</h3>
-        {riders.length === 0 ? (
-          <p className="text-slate-400 text-sm">No riders registered yet.</p>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {riders.map((r) => (
-              <li key={r.id} className="py-2 flex justify-between text-sm">
-                <span className="font-medium text-slate-800">
-                  #{r.number} — {r.name}
-                </span>
-                <span className="text-slate-500">{r.category}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div> */}
     </Card>
   );
 }

@@ -6,7 +6,7 @@ import { useRiderLists } from "../hooks/useRiderLists";
 import { TableSkeleton } from '../components/LoadingStates';
 
 const Results = () => {
-  const { raceId, activeRaceId, isLoading, riders } = useRaceStore();
+  const { raceId, eventName, trackName, isLoading, riders } = useRaceStore();
 
   const { finishedRiders } = useRiderLists(riders);
   const downloadCSV = () => {
@@ -15,7 +15,7 @@ const Results = () => {
       ",Rank,Rider Number,Rider Name, AusCycle Number, Race Time,Start Time,Finish Time,Status",
     ];
     const raceDetails = [
-      `Track Name: ${raceId}\nRace Date: ${new Date().toLocaleDateString()}`,
+      `Track Name: ${trackName}\nRace Date: ${new Date().toLocaleDateString()}`,
     ];
     // CSV Rows
     const rows = finishedRiders.map((r, index) => {
@@ -37,29 +37,46 @@ const Results = () => {
     link.click();
     document.body.removeChild(link);
   };
-const exportResultsCSV = (riders, raceId) => {
+const exportResultsCSV = (riders, eventName, trackName) => {
   // 1. Filter for finished riders and group by Category
-  const finished = riders.filter(r => r.status === "FINISHED");
+  const completedOrRetired = riders.filter(r => 
+    ["FINISHED", "DNF", "DNS"].includes(r.status)
+  );
   
   // Grouping logic
-  const grouped = finished.reduce((acc, rider) => {
+  const grouped = completedOrRetired.reduce((acc, rider) => {
     const cat = rider.category || "Uncategorized";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(rider);
     return acc;
   }, {});
 
+  const today = new Date().toLocaleDateString("en-AU");
+  let csvContent = `EVENT,${eventName.toUpperCase()}\n`;
+  csvContent += `TRACK,${trackName.toUpperCase()}\n`;
+  csvContent += `DATE,${today}\n`;
+  csvContent += `GENERATED,${new Date().toLocaleTimeString()}\n\n`; // Spacer
   // 2. Setup CSV Headers
-  let csvContent = "Rank,Rider Number,Rider Name,AusCycle Number,Race Time,Start Time,Finish Time,Status\n";
+  csvContent += "Rank,Rider Number,Rider Name,AusCycle Number,Race Time,Start Time,Finish Time,Status\n";
 
   // 3. Process each category
   Object.keys(grouped).sort().forEach(category => {
     csvContent += `--- CATEGORY: ${category} ---\n`;
     
     // Sort riders within this category by durationMs
-    const sortedRiders = grouped[category].sort((a, b) => 
-      (a.durationMs || 0) - (b.durationMs || 0)
-    );
+    const sortedRiders = grouped[category].sort((a, b) => {
+      // 1. Finished riders always come first, sorted by time
+      if (a.status === "FINISHED" && b.status === "FINISHED") {
+        return (a.durationMs || 0) - (b.durationMs || 0);
+      }
+      // 2. Finished comes before DNF/DNS
+      if (a.status === "FINISHED") return -1;
+      if (b.status === "FINISHED") return 1;
+      // 3. DNF comes before DNS
+      if (a.status === "DNF" && b.status === "DNS") return -1;
+      if (a.status === "DNS" && b.status === "DNF") return 1;
+      return 0;
+    });
 
     sortedRiders.forEach((r, index) => {
       const row = [
@@ -68,9 +85,9 @@ const exportResultsCSV = (riders, raceId) => {
         `"${r.firstName} ${r.lastName}"`,           // Rider Name
         `"${r.caLicenceNumber || ''}"`,              // AusCycle Number
         r.raceTime,                                  // Race Time (00:00:30.45)
-        r.startTime,                                 // Start Time (19:33:42)
+        r.startTime || '-',                                 // Start Time (19:33:42)
         // Convert Finish Ms back to readable time if needed
-        new Date(r.finishTimeMs).toLocaleTimeString("en-AU", { hour12: false }), 
+        r.finishTimeMs? new Date(r.finishTimeMs).toLocaleTimeString("en-AU", { hour12: false }) : '-', 
         r.status
       ].join(",");
       csvContent += row + "\n";
@@ -82,8 +99,9 @@ const exportResultsCSV = (riders, raceId) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+  const fileName = `${eventName}_${trackName}_${today.replace(/\//g, '-')}.csv`.replace(/\s+/g, '_');
   link.setAttribute("href", url);
-  link.setAttribute("download", `Race_Results_${raceId}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute("download", fileName);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
@@ -130,6 +148,39 @@ const exportResultsCSV = (riders, raceId) => {
         >
           📥 Export CSV (By Category)
         </button>
+        <button 
+          onClick={() => exportResultsCSV(riders, eventName, trackName)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
+        >
+          <span>📥</span> Export Official Results
+        </button>
+      </div>
+      <div className="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
+        {/* 1. Global Event Header */}
+        <div className="flex justify-between items-center mb-8">
+          <EventSummary />
+        </div>
+
+        <hr className="my-8 border-slate-200" />
+
+        {/* 2. Detailed View for Selected Track */}
+        {trackName ? (
+          <section>
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <h2 className="text-3xl font-black italic text-slate-900 uppercase">
+                  {trackName} Results
+                </h2>
+              </div>
+              <ExportCSVButton /> {/* Our previously built button */}
+            </div>
+            <DetailedResultsTable />
+          </section>
+        ) : (
+          <div className="text-center py-20 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300">
+            <p className="text-slate-500 font-medium">Select a track above to view detailed results and rankings.</p>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

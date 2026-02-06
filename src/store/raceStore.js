@@ -27,8 +27,36 @@ import { db, appId, auth } from "../modules/firebase";
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
 
 export const useRaceStore = create((set, get) => ({
+    eventName: localStorage.getItem('eventName') || "",
+  trackName: "", 
+  activeRaceId: "", // Combined ID: EVENT_TRACK
+
+  setEvent: (name) => {
+    localStorage.setItem('eventName', name);
+    set({ eventName: name });
+  },
+
+  setTrack: (track) => {
+    const { eventName } = get();
+    const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
+    const formattedTrack = track.replace(/\s+/g, '-').toUpperCase();
+    
+    set({ 
+      trackName: track,
+      activeRaceId: `${formattedEvent}_${formattedTrack}`
+    });
+  },
+
   riders: [],
-  activeRaceId: new Date().toISOString().split('T')[0], // Default to today's date "YYYY-MM-DD"  
+  setEventName: (name) => set({ eventName: name }),
+  setTrackName: (name) => set({ trackName: name }),
+  
+  // Unique ID for DB filtering (combines both to prevent overlaps)  
+  setSession: (event, track) => set({ 
+    eventName: event, 
+    trackName: track,
+    activeRaceId: `${event.replace(/\s+/g, '-')}_${track.replace(/\s+/g, '-')}`.toUpperCase()
+  }),  
   queueStart: (riderData) => {
     const existing = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
     existing.push(riderData);
@@ -59,7 +87,7 @@ export const useRaceStore = create((set, get) => ({
   // When adding/loading riders, ensure they get the activeRaceId
 // Inside your create((set, get) => ({ ... }))
 addRider: async (riderData) => {
-  const { activeRaceId } = get();
+  const { activeRaceId, eventName, trackName } = get();
   
   // 1. Prepare the complete rider object
   const newRider = {
@@ -68,6 +96,9 @@ addRider: async (riderData) => {
     
     // Session Tracking
     raceId: activeRaceId,
+    eventName: eventName,
+    trackName: trackName,
+    
     status: "WAITING",
     createdAt: serverTimestamp(), // Good for secondary sorting if needed
 
@@ -143,13 +174,13 @@ addRider: async (riderData) => {
   activeTab: "import",
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  raceId: "",
+  raceId: "", 
   setRaceId: (id) => set({ raceId: id }),
   now: new Date(), // reference time
   tick: () => set({ now: new Date() }),
   isOnline: navigator.onLine,
   setIsOnline: (status) => set({ isOnline: status }),
-  riders: [],
+  // riders: [],
   setRiders: (riders) => set({ 
     riders, 
     isLoading: false // Set to false once data arrives
@@ -306,6 +337,29 @@ addRider: async (riderData) => {
     handleStart(raceId, soloNumber);
   },
 
+updateRiderStatus: async (riderId, newStatus) => {
+  try {
+    const { doc, updateDoc } = await import("firebase/firestore");
+    const riderRef = doc(db, "riders", riderId);
+
+    // Update Firestore
+    await updateDoc(riderRef, { 
+      status: newStatus,
+      // If DNF, we keep the startTimeMs for records but clear potential duration
+      durationMs: null, 
+      raceTime: newStatus // Set raceTime string to "DNF" or "DNS" for the CSV
+    });
+
+    // Update Local State
+    set((state) => ({
+      riders: state.riders.map((r) =>
+        r.id === riderId ? { ...r, status: newStatus, raceTime: newStatus } : r
+      ),
+    }));
+  } catch (error) {
+    console.error(`Failed to update rider to ${newStatus}:`, error);
+  }
+},
   // Finish state
   handleFinish: async (rider) => {
     if (!rider) return;
@@ -445,4 +499,31 @@ addRider: async (riderData) => {
       console.error("Error importing demo riders:", error);
     }
   },
+  
+  resetRider: async (riderId) => {
+  try {
+    const { doc, updateDoc } = await import("firebase/firestore");
+    const riderRef = doc(db, "riders", riderId);
+
+    const resetData = {
+      status: "WAITING",
+      startTime: null,
+      startTimeMs: null,
+      finishTime: null,
+      finishTimeMs: null,
+      durationMs: null,
+      raceTime: null
+    };
+
+    await updateDoc(riderRef, resetData);
+
+    set((state) => ({
+      riders: state.riders.map((r) =>
+        r.id === riderId ? { ...r, ...resetData } : r
+      ),
+    }));
+  } catch (error) {
+    console.error("Reset failed:", error);
+  }
+}
 }));

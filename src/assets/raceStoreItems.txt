@@ -1,0 +1,42 @@
+export const useRaceStore = create((set, get) => ({
+  riders: [],
+  eventName: "", ← the overall Event name eg: Anzac Race Day etc
+  trackName: "",  ←the track being raced: Easy Street, Rifle Range etc
+  raceId: "",       ← the original raceid now replaced by trackname
+  setRaceId:,
+  activeRaceId: "",
+  setSession: 
+  queueStart: 
+  syncPendingStarts: 
+  user: null,
+  authLoading: true,
+  setActiveRaceId:,
+  addRider: ,
+  initAuth:,
+  logout:,
+  initAuthListener: ,
+  login: ,
+  riderNumber: "",
+  lastStarted:,
+  localLogs:,
+  activeTab:,
+  setActiveTab: ,
+  unsubscribeRiders: ,
+  clearRiders:,
+  setRiderNumber:,
+  finishing:,
+  finishLogs:,
+  loading: ,
+  setLoading: ,
+  soloMode: ,
+  setSoloMode:,
+  showSoloStart: ,
+  soloNumber: "",
+  setSoloNumber:,
+  handleStart: ,
+  subscribeToRiders:,
+  handleSoloStart: ,
+  updateRiderStatus:,
+  handleFinish:,
+  importRidersToDb: ,
+  resetRider:,

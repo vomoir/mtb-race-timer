@@ -28,16 +28,16 @@ const FinishLine = () => {
     setSoloMode,
     handleSoloStart,
     handleFinish,
+    updateRiderStatus,
   } = useRaceStore();
 
   const [pendingFinishes, setPendingFinishes] = useState([]);
   const { ridersOnTrack, finishedRiders } = useRiderLists();
-  const handleCapture = () => {
-    // const now = new Date();
+  const handleCapture = () => {    
     setPendingFinishes((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: crypto.randomUUID(),        
         finishTime: getTime(),
         finishTimeMs: getTimeMs(),
         displayTime: getTime(),
@@ -263,6 +263,12 @@ const FinishLine = () => {
                   ) : (
                     "FINISH"
                   )}
+                </button>
+                <button 
+                  onClick={() => updateRiderStatus(rider.id, 'DNF')}
+                  className="bg-red-500 text-white px-3 py-1 rounded text-xs"
+                >
+                  DNF
                 </button>
               </div>
             ))}

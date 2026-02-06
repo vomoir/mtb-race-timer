@@ -1,5 +1,5 @@
 import React from "react";
-import { Play, RefreshCw, CheckCircle, ArrowUp } from "lucide-react";
+import { Play, RefreshCw, RotateCcw, CheckCircle, ArrowUp } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { formatTime } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
@@ -13,6 +13,7 @@ const StarterComponent = () => {
     localLogs,
     setRiderNumber,
     handleStart,
+    updateRiderStatus,
   } = useRaceStore();
 
   const onSubmit = (e) => {
@@ -68,6 +69,35 @@ const StarterComponent = () => {
           >
             {loading ? <RefreshCw className="animate-spin" /> : "START RIDER"}
           </button>
+          <button 
+            onClick={() => updateRiderStatus(riderNumber, 'DNS')}
+            className="bg-slate-400 text-white px-3 py-1 rounded text-xs"
+          >
+            DNS
+          </button>
+          
+          // Inside your rider list mapping:
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="font-bold">{rider.raceTime || '--:--:--'}</p>
+              <p className="text-xs text-slate-500">{rider.status}</p>
+            </div>
+            
+            {/* The Undo Button */}
+            {rider.status !== "WAITING" && (
+              <button 
+                onClick={() => {
+                  if(window.confirm(`Reset ${rider.firstName} to WAITING? All times will be lost.`)) {
+                    resetRider(rider.id);
+                  }
+                }}
+                className="p-2 text-slate-400 hover:text-orange-600 transition-colors"
+                title="Reset Rider"
+              >
+                <RotateCcw size={16} />
+              </button>
+            )}
+          </div>
         </form>
         <div className="overflow-y-auto p-2 space-y-2 bg-slate-50/30 max-h-96 rounded-lg">
           {waitingRiders.map((rider) => (
