@@ -1,25 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import {
-  Play,
-  Flag,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  List,
-  RefreshCw,
-  Timer,
-  LogIn,
-  Hash,
-  FileText,
-  Trophy,
-  Download,
-  Wifi,
-  WifiOff,
-  Zap,
-} from "lucide-react";
-
 import { useRaceStore } from "./store/raceStore";
+import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginScreen from "./components/LoginScreen";
 import Header from "./components/Header";
 import StarterComponent from "./components/Starter";
@@ -34,91 +16,78 @@ import RiderImporter from "./components/RiderImporter";
 
 // --- Helpers ---
 export default function App() {
-  const { activeTab, raceId, setRaceId, setIsOnline, subscribeToRiders, tick } =
-    useRaceStore();
-  const [user] = useState(null);
-  const initAuthListener = useRaceStore((s) => s.initAuthListener);
-  const initAuth = useRaceStore((s) => s.initAuth);
+  const { 
+    activeRaceId, // Using the ID we generate in the store
+    eventName, 
+    subscribeToRiders, 
+    tick, 
+    initAuth, 
+    initAuthListener, 
+    setIsOnline 
+  } = useRaceStore();
 
+  // 1. Auth & Connectivity Listeners (Stay the same)
+  useEffect(() => { initAuthListener(); }, [initAuthListener]);
   useEffect(() => {
-    console.log("App mounted. Authenticating...");
-    initAuthListener();
-  }, [initAuthListener]);
+    const unsubPromise = initAuth();
+    return () => { unsubPromise.then((unsub) => unsub && unsub()); };
+  }, [initAuth]);
 
+  // 2. Single, Clean Firestore Subscription
   useEffect(() => {
-    if (!raceId) {
-      // No raceId yet → don’t subscribe
-      return;
-    }
+    if (!activeRaceId) return;
+    const unsubscribe = subscribeToRiders(activeRaceId);
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [subscribeToRiders, activeRaceId]);
 
-    console.log(`App mounted. Starting Listener...${raceId}`);
-    const unsubscribe = subscribeToRiders(raceId);
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [subscribeToRiders, raceId]);
-
+  // 3. Race Clock Tick
   useEffect(() => {
-    window.addEventListener("online", () =>
-      useRaceStore.getState().syncPendingStarts()
-    );
-  }, []);
+    const interval = setInterval(() => tick(), 5000);
+    return () => clearInterval(interval);
+  }, [tick]);
 
-  useEffect(() => {
-    // Pass raceId here if you have one, or leave empty
-    const unsubscribe = subscribeToRiders();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [subscribeToRiders]);
-  // Monitor Connectivity
+  // 4. Connectivity Monitoring
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, [setIsOnline]);
 
-  // 1. Authenticate
-  useEffect(() => {
-    const unsubPromise = initAuth();
-    return () => {
-      unsubPromise.then((unsub) => unsub && unsub());
-    };
-  }, [initAuth]);
-
-  // start ticking every 5s
-  useEffect(() => {
-    const interval = setInterval(() => tick(), 5000);
-    return () => clearInterval(interval);
-  }, [tick]);
-
-  // SHOW LOGIN SCREEN IF NO RACE ID
-  if (!raceId) {
-    return <LoginScreen onJoin={setRaceId} />;
-  }
-
+  // --- RENDER SECTION ---
+  // No more early returns!
   return (
     <div className="min-h-screen bg-slate-100 font-sans pb-20">
-      <Header />
-      <main className="animate-in fade-in duration-300">
-        {activeTab === "import" ? (
-          <RiderImporter raceId={raceId} />
-        ) : activeTab === "starter" ? (
-          <StarterComponent user={user} raceId={raceId} />
-        ) : activeTab === "finish" ? (
-          <FinishLineComponent user={user} raceId={raceId} />
-        ) : (
-          <ResultsComponent user={user} raceId={raceId} />
-        )}
-      </main>
+      {/* Header only shows if we have an event selected */}
+      {eventName && <Header />}
+
+      <Routes>
+        {/* Home Path */}
+        <Route path="/" element={<LoginScreen />} />
+        
+        {/* Protected Routes: Redirect to "/" if no event name exists */}
+        <Route 
+          path="/registration" 
+          element={eventName ? <RiderImporter /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/starter" 
+          element={eventName ? <StarterComponent /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/finish" 
+          element={eventName ? <FinishLineComponent /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/results" 
+          element={eventName ? <ResultsComponent /> : <Navigate to="/" />} 
+        />
+      </Routes>
+
       <Toaster />
     </div>
   );

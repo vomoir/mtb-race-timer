@@ -158,7 +158,7 @@ const exportResultsCSV = (riders, eventName, trackName) => {
       <div className="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
         {/* 1. Global Event Header */}
         <div className="flex justify-between items-center mb-8">
-          <EventSummary />
+          {/* <EventSummary /> */}
         </div>
 
         <hr className="my-8 border-slate-200" />

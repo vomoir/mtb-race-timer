@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, LogIn, Trophy, MapPin } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
@@ -11,10 +11,18 @@ const LoginScreen = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (eventName.trim()) {
-      navigate('/starter'); // Move to the next step
+       // 1. Save the event name to the store
+      setEvent(eventName.trim());
+      
+      // 2. Navigate to the next page
+      navigate('/starter'); 
     }
   };
-
+  useEffect(() => {
+    if (eventName) {
+      navigate('/registration');
+    }
+  }, [eventName, navigate]);
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
