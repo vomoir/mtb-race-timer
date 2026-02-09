@@ -3,75 +3,46 @@ import { useMemo } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { calculateTimeDifference, getTime } from "../utils/utils";
 
-export const useRiderLists = (riders) => {
+export function useRiderLists() {
+  // 1. Grab everything needed from the store
+  // Adding '|| []' is the "Safety Net" that prevents the .filter error
+  const riders = useRaceStore((state) => state.riders ?? []);
+  // const trackName = useRaceStore((state) => state.trackName);
+  // const eventName = useRaceStore((state) => state.eventName);
   const activeRaceId = useRaceStore((state) => state.activeRaceId);
+  const now = getTime(); // Assuming getTime returns a string like "HH:MM:SS"
 
-  const finishedRiders = useMemo(() => {
-    // 1. Safe-guard: If riders is undefined or null, return an empty array
-    if (!riders) return [];
-    
-    return riders
-      .filter((r) => 
-        r.status === "FINISHED" && 
-        r.raceId === activeRaceId // Only show riders for the selected session
-      )
-      .sort((a, b) => (a.durationMs || 0) - (b.durationMs || 0));
-  }, [riders, activeRaceId]);
-
-  const ridersOnTrack = useMemo(() => {
-    return riders.filter((r) => 
-      r.status === "ON_TRACK" && 
+  // 2. CREATE THE BASE FILTER
+  // This ensures we only look at riders for the CURRENT track
+  const currentTrackRiders = useMemo(() => {
+    return riders.filter(r => 
       r.raceId === activeRaceId
     );
   }, [riders, activeRaceId]);
 
-  return { finishedRiders, ridersOnTrack };
-};
-
-export function useRiderListsCurrent() {
-  const riders = useRaceStore((state) => state.riders);
-  const now = getTime();
-
+  // 3. DERIVE THE LISTS FROM THE BASE FILTER
   const ridersOnTrack = useMemo(() => {
-    return riders
+    return currentTrackRiders
       .filter((r) => r.status === "ON_TRACK")
       .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
       .map((r) => ({
         ...r,
-        elapsedTime: calculateTimeDifference(r.startTime, now),
+        // Using your existing calculation logic
+        elapsedTime: typeof calculateTimeDifference === 'function' 
+          ? calculateTimeDifference(r.startTime, now) 
+          : "00:00"
       }));
-  }, [riders, now]);
+  }, [currentTrackRiders, now]);
 
   const finishedRiders = useMemo(() => {
-    return riders
+    return currentTrackRiders
       .filter((r) => r.status === "FINISHED")
-      .sort((a, b) => {
-        // Use the raw millisecond number, not the string
-        return (a.durationMs || 0) - (b.durationMs || 0);
-      });
-  }, [riders]);
+      .sort((a, b) => (a.durationMs || 0) - (b.durationMs || 0));
+  }, [currentTrackRiders]);
 
   const waitingRiders = useMemo(() => {
-    if (!Array.isArray(riders)) {
-      console.warn("Riders state is not an array!", riders);
-      return [];
-    }
-    console.log("\nWaiting Riders Store state:", useRaceStore.getState());
-    return riders.filter((r) => r.status === "WAITING");
-  }, [riders]);
+    return currentTrackRiders.filter((r) => r.status === "WAITING");
+  }, [currentTrackRiders]);
 
   return { ridersOnTrack, finishedRiders, waitingRiders };
 }
-
-// function formatElapsed(startTime, now) {
-//   if (!startTime) return null;
-//   const start = new Date(startTime);
-//   const diffMs = now - start;
-
-//   // Prevent negative time if clock skew
-//   if (diffMs < 0) return "0m 0s";
-
-//   const minutes = Math.floor(diffMs / 60000);
-//   const seconds = Math.floor((diffMs % 60000) / 1000);
-//   return `${minutes}m ${seconds}s`;
-// }

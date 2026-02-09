@@ -5,7 +5,7 @@ import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { Card } from "./Card";
 import { demoRiders } from "../utils/demoData";
 
-export default function RiderRegistration() {
+export const RiderImporter = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
   const { setRiders, importRidersToDb } = useRaceStore();

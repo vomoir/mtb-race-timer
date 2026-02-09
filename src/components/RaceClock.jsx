@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useRaceStore } from '../store/useRaceStore';
+import { useRaceStore } from '../store/raceStore';
 
 export const RaceClock = () => {
   const { riders, activeRaceId } = useRaceStore();

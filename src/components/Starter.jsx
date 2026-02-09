@@ -13,7 +13,8 @@ const StarterComponent = () => {
     localLogs,
     setRiderNumber,
     handleStart,
-    updateRiderStatus,
+    updateRiderStatus,    
+    resetRider,
   } = useRaceStore();
 
   const onSubmit = (e) => {
@@ -25,9 +26,7 @@ const StarterComponent = () => {
   const addRider = (riderNumber) => {
     setRiderNumber(riderNumber);
   };
-  // const [searchTerm, setSearchTerm] = useState("");
-  // Local filter for "WAITING" riders
-  // const waitingRiders = riders.filter((r) => r.status === "WAITING");
+  // Local filter for "WAITING" riders  
   const { waitingRiders } = useRiderLists();
 
   return (
@@ -40,10 +39,9 @@ const StarterComponent = () => {
             {waitingRiders.length} waiting
           </span>
         </h2>
-            <div className="session-picker">
-      <label>Select Race Session: </label>
-      <SessionPicker />
-    </div>
+        <div className="session-picker">      
+          <SessionPicker />
+        </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
@@ -74,9 +72,14 @@ const StarterComponent = () => {
             className="bg-slate-400 text-white px-3 py-1 rounded text-xs"
           >
             DNS
-          </button>
-          
-          // Inside your rider list mapping:
+          </button>          
+        </form>
+        <div className="overflow-y-auto p-2 space-y-2 bg-slate-50/30 max-h-96 rounded-lg">
+          {waitingRiders.map((rider) => (
+            <div
+              key={rider.riderNumber}
+              className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-200"
+            >          
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="font-bold">{rider.raceTime || '--:--:--'}</p>
@@ -98,31 +101,24 @@ const StarterComponent = () => {
               </button>
             )}
           </div>
-        </form>
-        <div className="overflow-y-auto p-2 space-y-2 bg-slate-50/30 max-h-96 rounded-lg">
-          {waitingRiders.map((rider) => (
-            <div
-              key={rider.riderNumber}
-              className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-slate-100 text-slate-700 font-mono font-bold w-10 h-10 flex items-center justify-center rounded-lg">
-                  {rider.riderNumber}
-                </div>
-                <div>
-                  <div className="font-bold text-slate-800">
-                    {rider.firstName} {rider.lastName}
-                  </div>
-                  <div className="text-xs text-slate-500">{rider.category}</div>
-                </div>
-              </div>
-              <button
-                onClick={() => addRider(rider.riderNumber)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg font-bold text-xs uppercase flex items-center gap-1"
-              >
-                Next to go <ArrowUp size={14} />
-              </button>
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-100 text-slate-700 font-mono font-bold w-10 h-10 flex items-center justify-center rounded-lg">
+              {rider.riderNumber}
             </div>
+            <div>
+              <div className="font-bold text-slate-800">
+                {rider.firstName} {rider.lastName}
+              </div>
+              <div className="text-xs text-slate-500">{rider.category}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => addRider(rider.riderNumber)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg font-bold text-xs uppercase flex items-center gap-1"
+          >
+            Next to go <ArrowUp size={14} />
+          </button>
+        </div>
           ))}
         </div>
         {lastStarted && (

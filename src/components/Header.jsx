@@ -2,30 +2,45 @@ import React from "react";
 import { useRaceStore } from "../store/raceStore";
 import { useNavigate, useLocation } from "react-router-dom"; // Add these
 import { Clock, Wifi, WifiOff, Hash, Play, Flag, Trophy, File } from "lucide-react";
+import {RaceClock} from "./RaceClock";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation(); // This tells us the current URL
   
-  const { raceId, setRaceId, isOnline, logout } = useRaceStore();
+  const { raceId, isOnline, trackName, setTrackName, eventName } = useRaceStore();
 
-  const handleLogout = () => {
-    // Clear the store and redirect to login
-    setRaceId(""); 
-    logout(); // Ensure this is called as a function
-    navigate("/"); 
-  };
+  // const handleLogout = () => {
+  //   // Clear the store and redirect to login
+  //   setRaceId(""); 
+  //   logout(); // Ensure this is called as a function
+  //   navigate("/"); 
+  // };
 
   // Helper to check if a tab is active based on the URL
   const isActive = (path) => location.pathname === path;
+// components/Header.jsx
+const SwitchEventButton = () => {
+  const logout = useRaceStore(state => state.logout);
+  
+  return (
+    <button 
+      onClick={logout}
+      className="text-xs font-bold text-slate-400 hover:text-red-500 flex items-center gap-1"
+    >
+      EXIT EVENT
+    </button>
+  );
+};
 
   return (
     <div className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
       <div className="flex justify-between items-center mb-4 max-w-2xl mx-auto">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Clock className="text-yellow-400" />
-          MTB Timing Pro
+          MTB Timing Pro - {eventName || "No Event Selected"}
         </h1>
+        <RaceClock />
         <div className="flex items-center gap-3">
           <div
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
@@ -38,19 +53,26 @@ const Header = () => {
             <span className="hidden sm:inline">
               {isOnline ? "ONLINE" : "OFFLINE"}
             </span>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-slate-500 font-bold uppercase">Active Track</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  value={trackName}
+                  onChange={(e) => setTrackName(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-orange-400 focus:border-orange-500 outline-none uppercase"
+                  placeholder="NO TRACK"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
             <Hash size={12} className="text-blue-400" />
             <span className="font-mono text-blue-200">{raceId || 'NO SESSION'}</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-xs text-slate-400 hover:text-white underline"
-          >
-            Exit
-          </button>
-        </div>
+          <SwitchEventButton  /> 
+       </div>
       </div>
 
       {/* Navigation Tabs */}

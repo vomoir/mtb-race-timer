@@ -1,4 +1,10 @@
+import React, {useRef} from "react";
+import TrackDialog from "./TrackDialog";
 import { useRaceStore } from "../store/raceStore";
+
+// 2. Wrap it with forwardRef
+// const ForwardedTrackDialog = forwardRef(TrackDialog);
+
 export const TrackPicker = () => {
   const { trackName, setTrack, riders, eventName } = useRaceStore();
   
@@ -6,6 +12,7 @@ export const TrackPicker = () => {
   const existingTracks = [...new Set(riders
     .filter(r => r.eventName === eventName)
     .map(r => r.trackName))].filter(Boolean);
+  const dialogRef = useRef(null);
 
   return (
     <div className="bg-slate-100 p-4 rounded-xl mb-6 border border-slate-200">
@@ -16,19 +23,24 @@ export const TrackPicker = () => {
           onChange={(e) => setTrack(e.target.value)}
           className="flex-1 p-2 rounded border border-slate-300 bg-white font-mono text-sm"
         >
-          <option value="">-- Select or Create Track --</option>
+          <option value="">Select ↓ or Add new Track →</option>
           {existingTracks.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        
-        <button 
-          onClick={() => {
-            const newTrack = prompt("Enter New Track/Stage Name:");
-            if (newTrack) setTrack(newTrack);
-          }}
+        </select>        
+
+        <button
+          onClick={() => dialogRef.current.open()}
           className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold"
         >
           + NEW
         </button>
+
+        <TrackDialog
+          ref={dialogRef}
+          title="Enter New Track/Stage Name"
+          placeholder="Track name…"
+          onSubmit={(value) => setTrack(value)}
+        />
+
       </div>
       {!trackName && <p className="text-red-500 text-[10px] mt-1 font-bold">⚠️ PLEASE SELECT A TRACK BEFORE ADDING RIDERS</p>}
     </div>

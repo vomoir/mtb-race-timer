@@ -3,6 +3,30 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  test: {
+    environment: 'jsdom', // This "fakes" the browser environment
+    globals: true,
+    setupFiles: './src/test/setup.js', // This file will run before each test suite
+    include: ['src/tests/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    server: {
+      deps: {
+        inline: [/@csstools/],
+      },
+    },
+    css: true, // Or set to false to ignore CSS entirely
+    deps: {
+      optimizer: {
+        web: {
+          include: ['@csstools/css-calc']
+        }
+      }
+    },
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

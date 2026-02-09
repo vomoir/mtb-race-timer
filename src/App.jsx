@@ -7,7 +7,7 @@ import Header from "./components/Header";
 import StarterComponent from "./components/Starter";
 import FinishLineComponent from "./components/FinishLine";
 import ResultsComponent from "./components/Results";
-import RiderImporter from "./components/RiderImporter";
+import {RiderRegistration } from './components/RiderRegistration';
 
 // import { getAnalytics } from "firebase/analytics";
 // import { auth } from "../modules/firebase";
@@ -42,7 +42,7 @@ export default function App() {
 
   // 3. Race Clock Tick
   useEffect(() => {
-    const interval = setInterval(() => tick(), 5000);
+    const interval = setInterval(() => tick(), 1000);
     return () => clearInterval(interval);
   }, [tick]);
 
@@ -57,22 +57,26 @@ export default function App() {
       window.removeEventListener("offline", handleOffline);
     };
   }, [setIsOnline]);
+  // Only show the app if eventName is an actual string with length
+  if (!eventName || eventName.trim().length === 0) {
+    return <LoginScreen />;
+  }
 
   // --- RENDER SECTION ---
   // No more early returns!
   return (
     <div className="min-h-screen bg-slate-100 font-sans pb-20">
       {/* Header only shows if we have an event selected */}
-      {eventName && <Header />}
+      <Header />
 
       <Routes>
         {/* Home Path */}
-        <Route path="/" element={<LoginScreen />} />
+        <Route path="/" element={<RiderRegistration />} />
         
         {/* Protected Routes: Redirect to "/" if no event name exists */}
         <Route 
           path="/registration" 
-          element={eventName ? <RiderImporter /> : <Navigate to="/" />} 
+          element={eventName ? <RiderRegistration /> : <Navigate to="/" />} 
         />
         <Route 
           path="/starter" 

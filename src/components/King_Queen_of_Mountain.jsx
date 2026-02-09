@@ -1,11 +1,10 @@
 // Uset he raceResultsCalulations file to calculate the overall winners and stage winners, then display them here in a nice format with the trophy icon
-import React, { useMemo } from "react";
+import React from "react";
 import { Trophy } from "lucide-react";
-import { useRaceStore } from "../store/raceStore";
-import { overallData } from "../utils/raceResultsCalculations";
+import { OverallResults } from "../utils/raceResultsCalculations";
 <div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-    {overallData.stageWinners.map(winner => (
+    {/* {overallData.stageWinners.map(winner => (
         <div key={winner.track} className="bg-linear-to-br from-slate-900 to-slate-800 p-4 rounded-xl border-l-4 border-orange-500 shadow-lg">
         <div className="flex justify-between items-start">
             <p className="text-orange-500 text-[10px] font-black uppercase tracking-widest">{winner.track}</p>
@@ -14,11 +13,12 @@ import { overallData } from "../utils/raceResultsCalculations";
         <p className="text-white font-bold text-lg">{winner.firstName} {winner.lastName}</p>
         <p className="text-slate-400 font-mono text-sm">{winner.raceTime} <span className="text-[10px] text-slate-500">({winner.category})</span></p>
         </div>
-    ))}
+    ))} */}
     </div>
     <div className="space-y-8">
     <h2 className="text-2xl font-black italic text-slate-900">OVERALL STANDINGS</h2>
-    {Object.entries(overallData.categoryStandings).map(([category, standings]) => (
+    <OverallResults />
+    {/* {Object.entries(overallData.categoryStandings).map(([category, standings]) => (
         <div key={category} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
             <h3 className="font-bold text-slate-700 uppercase tracking-wide">{category}</h3>
@@ -49,6 +49,6 @@ import { overallData } from "../utils/raceResultsCalculations";
             </tbody>
         </table>
         </div>
-    ))}
+    ))} */}
     </div>
 </div>

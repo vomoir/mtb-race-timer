@@ -27,15 +27,9 @@ import { db, appId, auth } from "../modules/firebase";
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
 
 export const useRaceStore = create((set, get) => ({
-    eventName: localStorage.getItem('eventName') || "",
-  trackName: "", 
-  activeRaceId: "", // Combined ID: EVENT_TRACK
-
-  setEvent: (name) => {
-    localStorage.setItem('eventName', name);
-    set({ eventName: name });
-  },
-
+  eventName:  "",
+  trackName: "NO TRACK",
+  // setTrackName: (name) => set({ trackName: name }), 
   setTrack: (track) => {
     const { eventName } = get();
     const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
@@ -48,9 +42,29 @@ export const useRaceStore = create((set, get) => ({
   },
 
   riders: [],
-  setEventName: (name) => set({ eventName: name }),
-  setTrackName: (name) => set({ trackName: name }),
-  
+  // activeRaceId: "", // Combined ID: EVENT_TRACK
+  setEvent: (name) => {
+    localStorage.setItem('eventName', name);
+    // We explicitly clear old riders when switching events 
+    // to ensure no "ghost" data appears from the previous session
+    set({ 
+      eventName: name, 
+      // riders: [], 
+      trackName: "NO TRACK" 
+    });
+  },
+  // Helper to "Log Out" / Switch Event
+  logout: async () => {
+    set({ eventName: "", riders: [] });
+    await signOut(auth);
+    set({ user: null });
+  },
+
+  // This is the magic string that separates data in Firestore
+  getRaceId: () => {
+    const { eventName, trackName } = get();
+    return `${eventName}_${trackName}`.replace(/\s+/g, '-').toUpperCase();
+  },  
   // Unique ID for DB filtering (combines both to prevent overlaps)  
   setSession: (event, track) => set({ 
     eventName: event, 
@@ -143,11 +157,6 @@ addRider: async (riderData) => {
     return unsubscribe;
   },
 
-  logout: async () => {
-    await signOut(auth);
-    set({ user: null });
-  },
-
   // subscribe to auth state changes
   initAuthListener: () => {
     onAuthStateChanged(auth, (firebaseUser) => {
@@ -176,7 +185,7 @@ addRider: async (riderData) => {
 
   raceId: "", 
   setRaceId: (id) => set({ raceId: id }),
-  now: new Date(), // reference time
+  now: getTime(), // reference time
   tick: () => set({ now: new Date() }),
   isOnline: navigator.onLine,
   setIsOnline: (status) => set({ isOnline: status }),
@@ -283,8 +292,8 @@ addRider: async (riderData) => {
     set({ loading: false });
   },
 
-  subscribeToRiders: (raceId) => {
-    if (!raceId) return null; // no subscription
+  subscribeToRiders: (activeRaceId) => {
+    if (!activeRaceId) return null; // no subscription
 
     const baseCollection = collection(
       db,
@@ -298,13 +307,13 @@ addRider: async (riderData) => {
     // Build constraints dynamically
     const constraints = [orderBy("startTime", "asc")];
 
-    if (raceId) {
-      constraints.unshift(where("raceId", "==", raceId));
+    if (activeRaceId) {
+      constraints.unshift(where("raceId", "==", activeRaceId));
     }
 
     const q = query(baseCollection, ...constraints);
 
-    console.log(`Subscribing to riders... ${raceId}`);
+    console.log(`Subscribing to riders... ${activeRaceId ? `Filtering by active raceId: ${activeRaceId}` : "No raceId filter"}`);
 
     // 2. Set up the listener
     const unsubscribe = onSnapshot(
@@ -427,15 +436,15 @@ updateRiderStatus: async (riderId, newStatus) => {
       console.error("Error finishing rider:", error);
     } finally {
       set({ finishing: null, manualNumber: "" });
-    }
+    } 
   },
 
   importRidersToDb: async (importRiders) => {
-    const raceId = get().raceId;
+    const activeRaceId = get().activeRaceId;
 
-    if (!db || !appId || !raceId) {
+    if (!db || !appId || !activeRaceId) {
       console.error(
-        "Cannot import demo data: Missing dependencies (db, appId, raceId)."
+        "Cannot import demo data: Missing dependencies (db, appId, activeRaceId)."
       );
       return;
     }
@@ -466,6 +475,9 @@ updateRiderStatus: async (riderId, newStatus) => {
           `Skipped rider: missing rider number (${r.firstName} ${r.lastName})`
         );
       } else {
+        r.activeRaceId = activeRaceId; // Ensure they get the current session ID
+        r.eventName = get().eventName; // Add event name for better tracking
+        r.trackName = get().trackName; // Add track name for better tracking
         validRiders.push(r);
       }
     });
@@ -475,10 +487,12 @@ updateRiderStatus: async (riderId, newStatus) => {
       .filter((r) => r.riderNumber && String(r.riderNumber).trim() !== "")
       .map((rider) => {
         const newDoc = {
-          raceId,
+          raceId: activeRaceId,
           riderNumber: String(rider.riderNumber).trim(), // Ensure consistent string format
           firstName: rider.firstName,
           lastName: rider.lastName,
+          eventName: rider.eventName || get().eventName,
+          trackName: rider.trackName || get().trackName,
           caLicenceNumber: rider.caLicenceNumber,
           category: rider.category,
           status: "WAITING",
@@ -501,29 +515,61 @@ updateRiderStatus: async (riderId, newStatus) => {
   },
   
   resetRider: async (riderId) => {
-  try {
-    const { doc, updateDoc } = await import("firebase/firestore");
-    const riderRef = doc(db, "riders", riderId);
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const riderRef = doc(db, "riders", riderId);
 
-    const resetData = {
+      const resetData = {
+        status: "WAITING",
+        startTime: null,
+        startTimeMs: null,
+        finishTime: null,
+        finishTimeMs: null,
+        durationMs: null,
+        raceTime: null
+      };
+
+      await updateDoc(riderRef, resetData);
+
+      set((state) => ({
+        riders: state.riders.map((r) =>
+          r.id === riderId ? { ...r, ...resetData } : r
+        ),
+      }));
+    } catch (error) {
+      console.error("Reset failed:", error);
+    }
+},
+cloneRidersFromTrack: async (sourceTrackName) => {
+  const { riders, eventName, trackName, addRider } = get();
+  
+  // 1. Find all riders from the source track in THIS event
+  const sourceRiders = riders.filter(
+    (r) => r.eventName === eventName && r.trackName === sourceTrackName
+  );
+
+  if (sourceRiders.length === 0) return { success: false, count: 0 };
+
+  // 2. Filter out riders that are ALREADY in the current track (to avoid duplicates)
+  const currentRiderNumbers = new Set(
+    riders.filter(r => r.trackName === trackName).map(r => r.riderNumber)
+  );
+
+  const ridersToClone = sourceRiders.filter(
+    (r) => !currentRiderNumbers.has(r.riderNumber)
+  );
+
+  // 3. Map to new objects (stripping timing data) and save
+  const clonePromises = ridersToClone.map(rider => {
+    const { id, startTime, finishTime, durationMs, raceTime, ...cleanData } = rider;
+    return addRider({
+      ...cleanData,
+      trackName: trackName, // Assign to current track
       status: "WAITING",
-      startTime: null,
-      startTimeMs: null,
-      finishTime: null,
-      finishTimeMs: null,
-      durationMs: null,
-      raceTime: null
-    };
+    });
+  });
 
-    await updateDoc(riderRef, resetData);
-
-    set((state) => ({
-      riders: state.riders.map((r) =>
-        r.id === riderId ? { ...r, ...resetData } : r
-      ),
-    }));
-  } catch (error) {
-    console.error("Reset failed:", error);
-  }
+  await Promise.all(clonePromises);
+  return { success: true, count: ridersToClone.length };
 }
 }));

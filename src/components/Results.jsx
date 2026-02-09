@@ -172,9 +172,9 @@ const exportResultsCSV = (riders, eventName, trackName) => {
                   {trackName} Results
                 </h2>
               </div>
-              <ExportCSVButton /> {/* Our previously built button */}
+              {/* <ExportCSVButton /> Our previously built button */}
             </div>
-            <DetailedResultsTable />
+            {/* <DetailedResultsTable /> */}
           </section>
         ) : (
           <div className="text-center py-20 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300">
