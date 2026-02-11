@@ -3,6 +3,7 @@ import { useRaceStore } from "../store/raceStore";
 import { useNavigate, useLocation } from "react-router-dom"; // Add these
 import { Clock, Wifi, WifiOff, Hash, Play, Flag, Trophy, File } from "lucide-react";
 import {RaceClock} from "./RaceClock";
+import { SyncButton } from "./starter/SyncButton";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -68,8 +69,17 @@ const SwitchEventButton = () => {
           </div>
 
           <div className="flex items-center gap-1 text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
-            <Hash size={12} className="text-blue-400" />
-            <span className="font-mono text-blue-200">{raceId || 'NO SESSION'}</span>
+            <Hash size={12} className="text-blue-400" />            
+            <div className="flex justify-between items-center p-4 bg-white border-b">
+              <div>
+                <h1 className="text-xl font-black">{trackName}</h1>
+                <p className="text-xs text-slate-500 uppercase tracking-widest">{eventName}</p>
+              </div>
+              <div className="flex gap-2">
+                <SyncButton />
+                {/* Other header actions like Clock or Finish List */}
+              </div>
+            </div>
           </div>
           <SwitchEventButton  /> 
        </div>

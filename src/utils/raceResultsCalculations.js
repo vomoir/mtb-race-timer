@@ -20,3 +20,25 @@ export const convertMsToMinSec = (ms) => {
     // Return the formatted string
     return `${formattedMinutes}:${formattedSeconds}.${formattedHundredths}`;
 }
+/**
+ * Sorts riders by status priority (FINISHED > DNF > DNS) 
+ * and then by duration for those who finished.
+ */
+export const sortRidersByTime = (riders) => {
+  return [...riders].sort((a, b) => {
+    // 1. Both finished? Sort by fastest time
+    if (a.status === "FINISHED" && b.status === "FINISHED") {
+      return (a.durationMs || 0) - (b.durationMs || 0);
+    }
+
+    // 2. One finished, one didn't? The finisher wins.
+    if (a.status === "FINISHED") return -1;
+    if (b.status === "FINISHED") return 1;
+
+    // 3. Both didn't finish? DNF (Did Not Finish) beats DNS (Did Not Start)
+    if (a.status === "DNF" && b.status === "DNS") return -1;
+    if (a.status === "DNS" && b.status === "DNF") return 1;
+
+    return 0;
+  });
+};

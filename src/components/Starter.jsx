@@ -4,6 +4,8 @@ import { useRaceStore } from "../store/raceStore";
 import { formatTime } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
 import SessionPicker from "./SessionPicker";
+import { CategoryFilter } from "./starter/CategoryFilter";
+
 const StarterComponent = () => {
   const {
     riderNumber,
@@ -15,8 +17,15 @@ const StarterComponent = () => {
     handleStart,
     updateRiderStatus,    
     resetRider,
+    riders, 
+    categoryFilter
   } = useRaceStore();
 
+  // 🟢 The logic: Filter the list based on the selected category
+  const filteredRiders = riders.filter(rider => {
+    if (categoryFilter === "ALL") return true;
+    return rider.category === categoryFilter;
+  });
   const onSubmit = (e) => {
     e.preventDefault();
     handleStart(raceId, riderNumber);
@@ -38,11 +47,22 @@ const StarterComponent = () => {
           <span className="text-xs font-normal text-slate-500 ml-auto bg-white px-2 py-1 rounded-full border border-slate-200">
             {waitingRiders.length} waiting
           </span>
-        </h2>
+        </h2>        
         <div className="session-picker">      
           <SessionPicker />
         </div>
+        <div className="max-w-2xl mx-auto p-4">
+          <h2 className="text-lg font-bold mb-2">Start Line</h2>
+          
+          {/* 1. Show the Filter Buttons */}
+          <CategoryFilter />
 
+          {/* 2. Show the Count */}
+          <div className="text-[10px] text-slate-400 uppercase mb-2">
+            Showing {filteredRiders.length} of {riders.length} total riders
+          </div>
+
+        </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-500 mb-1">
@@ -74,15 +94,15 @@ const StarterComponent = () => {
             DNS
           </button>          
         </form>
-        <div className="overflow-y-auto p-2 space-y-2 bg-slate-50/30 max-h-96 rounded-lg">
-          {waitingRiders.map((rider) => (
+        <div className="overflow-y-auto p-2 space-y-2 bg-slate-50/30 max-h-96 rounded-lg">        
+          {filteredRiders.map((rider) => (
             <div
               key={rider.riderNumber}
               className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-200"
             >          
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="font-bold">{rider.raceTime || '--:--:--'}</p>
+              <p className="font-bold">{rider.raceTime}</p>
               <p className="text-xs text-slate-500">{rider.status}</p>
             </div>
             

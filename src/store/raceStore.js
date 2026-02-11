@@ -4,6 +4,8 @@ import { getTime, formatDuration } from "../utils/utils.js";
 
 import {
   addDoc,
+  setDoc,
+  getDocs,
   collection,
   doc,
   updateDoc,
@@ -13,7 +15,6 @@ import {
   orderBy,
   where,
 } from "firebase/firestore";
-
 import {
   onAuthStateChanged,
   signInAnonymously,
@@ -63,14 +64,27 @@ export const useRaceStore = create((set, get) => ({
   // This is the magic string that separates data in Firestore
   getRaceId: () => {
     const { eventName, trackName } = get();
-    return `${eventName}_${trackName}`.replace(/\s+/g, '-').toUpperCase();
-  },  
+    const {activeRaceId} = get();
+    if (activeRaceId) return activeRaceId; // Return existing ID if already set
+    return `${eventName}_${trackName}`.replace(/\s+/g, '-').toUpperCase();    
+  },    
+  
   // Unique ID for DB filtering (combines both to prevent overlaps)  
-  setSession: (event, track) => set({ 
+setSession: async (event, track) => {
+  const newActiveRaceId = `${event.replace(/\s+/g, '-')}_${track.replace(/\s+/g, '-')}`.toUpperCase();
+  
+  // 1. Update the session identifiers
+  set({ 
     eventName: event, 
     trackName: track,
-    activeRaceId: `${event.replace(/\s+/g, '-')}_${track.replace(/\s+/g, '-')}`.toUpperCase()
-  }),  
+    activeRaceId: newActiveRaceId,
+    riders: [] // Clear local state immediately for snappy UI
+  });
+
+  // 2. Automatically trigger the fetch for the new session
+  // Using the 'get' helper ensures we have the latest state
+  await get().fetchRidersForSession(); 
+},
   queueStart: (riderData) => {
     const existing = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
     existing.push(riderData);
@@ -103,41 +117,36 @@ export const useRaceStore = create((set, get) => ({
 addRider: async (riderData) => {
   const { activeRaceId, eventName, trackName } = get();
   
-  // 1. Prepare the complete rider object
+  // 1. Create the Predictable ID
+  // e.g., "WEDNESDAY-WARRIORS_RIFLERANGE_101"
+  const customDocId = `${activeRaceId}_${riderData.riderNumber}`;
+
   const newRider = {
-    // Spread the incoming data (riderNumber, firstName, lastName, etc.)
     ...riderData,
-    
-    // Session Tracking
     raceId: activeRaceId,
     eventName: eventName,
     trackName: trackName,
-    
     status: "WAITING",
-    createdAt: serverTimestamp(), // Good for secondary sorting if needed
-
-    // Initialize Timing Fields as null to prevent calculation errors
+    createdAt: serverTimestamp(),
     startTime: null,
-    startTimeMs: null,
     finishTime: null,
-    finishTimeMs: null,
     durationMs: null,
     raceTime: null,
   };
 
   try {
-    // 2. Save to Firestore
-    const docRef = await addDoc(collection(db, "riders"), newRider);
+    // 2. Use setDoc with our custom ID instead of addDoc
+    const docRef = doc(db, "riders", customDocId);
+    await setDoc(docRef, newRider);
     
-    // 3. Update Local State (Optimistic UI)
-    // We add the ID returned by Firestore so we can update this rider later
+    // 3. Update Local State
     set((state) => ({
-      riders: [...state.riders, { ...newRider, id: docRef.id }]
+      riders: [...state.riders, { ...newRider, id: customDocId }]
     }));
 
-    return { success: true, id: docRef.id };
+    return { success: true, id: customDocId };
   } catch (error) {
-    console.error("Error adding rider to session:", error);
+    console.error("Error adding rider:", error);
     return { success: false, error };
   }
 },
@@ -218,129 +227,82 @@ addRider: async (riderData) => {
 
   handleStart: async (raceId, riderNumber) => {
     if (!riderNumber.trim()) return;
-    const { riders } = get();
+    const { riders, eventName, trackName, activeRaceId } = get();
+
+    // 1. Check local state for the rider
     const existingRider = riders.find((r) => r.riderNumber === riderNumber);
-
-    // THE GUARD CLAUSE: Check if this rider is already active or finished
-    // We check against 'riderNumber'
     const nowIso = getTime();
-    const nowMs = Date.now(); // The numeric timestamp
+    const nowMs = Date.now();
 
-    if (!existingRider) {
-      // SCENARIO: NEW "AD-HOC" RIDER (Was not in the system)
-      const newRiderData = {
-        raceId,
-        riderNumber: riderNumber,
-        firstName: "Rider",
-        lastName: "Not Registered",
-        startTime: nowIso,
-        startTimeMs: nowMs,
-        status: "ON_TRACK",
-        finishTime: null,
-        finishTimeMs: null,
-        raceTime: null,
-        durationMs: null,
-        timestamp: serverTimestamp(),
-      };
-      const collectionRef = collection(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "mtb_riders"
-      );
-      try {
-        await addDoc(collectionRef, newRiderData);
-        saveToLocalBackup("starts", newRiderData);
-      } catch (err) {
-        console.error("Error adding ad-hoc rider:", err);
-        saveToLocalBackup("starts", { ...newRiderData, offline: true });
-      }
-    } else {
-      if (existingRider.status === "ON_TRACK") {
-        toast.error(`Rider #${riderNumber} is ALREADY on track!`);
-        return;
-      }
+    // 2. CONSISTENCY: Always use the new top-level path and Composite ID
+    // If the rider already has an ID, use it. Otherwise, build the composite one.
+    const docId = existingRider?.id || `${activeRaceId}_${riderNumber}`;
+    const docRef = doc(db, "riders", docId); // 🟢 TOP LEVEL COLLECTION
 
-      // SCENARIO: UPDATING AN EXISTING RIDER (e.g. moving from WAITING to ON_TRACK)
-      const docRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "mtb_riders",
-        existingRider.id
-      );
+    const startData = {
+      startTime: nowIso,
+      startTimeMs: nowMs,
+      status: "ON_TRACK",
+      riderNumber: riderNumber, // Ensure this is stored
+      raceId: activeRaceId,     // Ensure this is stored for ad-hoc riders
+      eventName: eventName, // Add this
+      trackName: trackName, // Add this
+    };
 
-      await updateDoc(docRef, {
-        startTime: nowIso,
-        startTimeMs: nowMs,
-        status: "ON_TRACK",
-        riderNumber: riderNumber,
-        // We don't change raceId or riderNumber, they are already there
-      });
+    try {
+      // 3. USE setDoc WITH MERGE instead of updateDoc
+      // This fixes the "No document found" error by creating it if missing
+      await setDoc(docRef, startData, { merge: true });
 
-      if (existingRider.status === "FINISHED") {
-        const confirmReRun = window.confirm(
-          `Rider #${riderNumber} has already finished. Do you want to let them run again?`
-        );
-        if (!confirmReRun) return;
-      }
+      // 4. Update local state
+      set((state) => ({
+        riders: existingRider 
+          ? state.riders.map((r) => r.id === docId ? { ...r, ...startData } : r)
+          : [...state.riders, { id: docId, ...startData }], // Add ad-hoc rider if new
+        loading: false,
+        manualNumber: ""
+      }));
+
+      toast.success(`Rider #${riderNumber} Started!`);
+    } catch (err) {
+      console.error("Start failed:", err);
+      toast.error("Could not start rider.");
     }
-    set({ loading: false });
   },
-
   subscribeToRiders: (activeRaceId) => {
-    if (!activeRaceId) return null; // no subscription
+    if (!activeRaceId) return null;
 
-    const baseCollection = collection(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "mtb_riders"
+    // 1. POINT TO THE NEW TOP-LEVEL COLLECTION
+    const baseCollection = collection(db, "riders");
+
+    // Build constraints (Removed orderBy startTime if it causes index issues initially)
+    const q = query(
+      baseCollection, 
+      where("raceId", "==", activeRaceId)
     );
 
-    // Build constraints dynamically
-    const constraints = [orderBy("startTime", "asc")];
+    console.log(`📡 Subscribing to NEW riders collection for: ${activeRaceId}`);
 
-    if (activeRaceId) {
-      constraints.unshift(where("raceId", "==", activeRaceId));
-    }
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveRiders = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id, // This will now be your "EVENT_TRACK_NUMBER" string
+          riderNumber: String(data.riderNumber),
+          startTime: data.startTime || null,
+          finishTime: data.finishTime || null,
+        };
+      });
+      
+      set({ riders: liveRiders });
+    }, (error) => {
+      console.error("Firestore listener error:", error);
+    });
 
-    const q = query(baseCollection, ...constraints);
-
-    console.log(`Subscribing to riders... ${activeRaceId ? `Filtering by active raceId: ${activeRaceId}` : "No raceId filter"}`);
-
-    // 2. Set up the listener
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        let liveRiders = [];
-        liveRiders = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            ...data,
-            id: doc.id,
-            riderNumber: String(data.riderNumber), // normalize type
-            startTime: data.startTime ? data.startTime : null,
-            finishTime: data.finishTime ? data.finishTime : null,
-          };
-        });
-        set({ riders: liveRiders });
-      },
-      (error) => {
-        console.error("Firestore listener error:", error);
-      }
-    );
-
-    // 4. Return unsubscribe so useEffect can clean up
     return unsubscribe;
   },
-  handleSoloStart: async () => {
+    handleSoloStart: async () => {
     const { soloNumber, raceId, handleStart } = get();
     if (!soloNumber.trim()) return;
     handleStart(raceId, soloNumber);
@@ -369,8 +331,8 @@ updateRiderStatus: async (riderId, newStatus) => {
     console.error(`Failed to update rider to ${newStatus}:`, error);
   }
 },
-  // Finish state
-  handleFinish: async (rider) => {
+ // Finish state
+ handleFinish: async (rider) => {
     if (!rider) return;
     set({ finishing: rider.id });
 
@@ -399,121 +361,98 @@ updateRiderStatus: async (riderId, newStatus) => {
     const finishData = {
       status: "FINISHED",
       finishTime: rider.finishTime,
+	    finishTimeMs: end, // Store MS for sorting/GC
       durationMs: finalDuration, // CRUCIAL: Used for sorting
       raceTime: raceTimeStr,
     };
 
     // 5. Save to Firestore
     try {
-      const docRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "mtb_riders",
-        rider.id
-      );
+      // 🟢 Points to the unique record for THIS race session
+      const docRef = doc(db, "riders", rider.id); 
       await updateDoc(docRef, finishData);
-    } catch (error) {
-      console.error("Error saving finish:", error);
-      toast.error("Failed to save result");
-    } finally {
-      set({ finishing: null });
-    }
 
-    try {
-      saveToLocalBackup("finishes", { ...rider, ...finishData });
-      set({ finishLogs: getLocalBackup("finishes") });
-      // Optional: Optimistic update (update local state immediately)
-      // The subscription will eventually update it, but this makes UI snappy
+      // Update Local State immediately (Optimistic UI)
       set((state) => ({
         riders: state.riders.map((r) =>
           r.id === rider.id ? { ...r, ...finishData } : r
         ),
+        finishLogs: [ { ...rider, ...finishData }, ...state.finishLogs ].slice(0, 50),
+        finishing: null,
+        manualNumber: ""
       }));
+
+      // Backup to localStorage
+      saveToLocalBackup("finishes", { ...rider, ...finishData });
+    
     } catch (error) {
-      console.error("Error finishing rider:", error);
-    } finally {
-      set({ finishing: null, manualNumber: "" });
-    } 
-  },
-
-  importRidersToDb: async (importRiders) => {
-    const activeRaceId = get().activeRaceId;
-
-    if (!db || !appId || !activeRaceId) {
-      console.error(
-        "Cannot import demo data: Missing dependencies (db, appId, activeRaceId)."
-      );
-      return;
-    }
-
-    const collectionRef = collection(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "mtb_riders"
-    );
-    // Normalize: always work with an array
-    const ridersArray = Array.isArray(importRiders)
-      ? importRiders
-      : [importRiders];
-    // Check for invalid data
-    const skipped = ridersArray.filter(
-      (r) => !r.riderNumber || String(r.riderNumber).trim() === ""
-    );
-    if (skipped.length > 0) {
-      toast.error(`Skipped ${skipped.length} rider(s) with missing numbers`);
-    }
-    const validRiders = [];
-    ridersArray.forEach((r) => {
-      if (!r.riderNumber || String(r.riderNumber).trim() === "") {
-        toast.error(
-          `Skipped rider: missing rider number (${r.firstName} ${r.lastName})`
-        );
-      } else {
-        r.activeRaceId = activeRaceId; // Ensure they get the current session ID
-        r.eventName = get().eventName; // Add event name for better tracking
-        r.trackName = get().trackName; // Add track name for better tracking
-        validRiders.push(r);
-      }
-    });
-
-    // Create an array of Promises for concurrent writes
-    const promises = validRiders
-      .filter((r) => r.riderNumber && String(r.riderNumber).trim() !== "")
-      .map((rider) => {
-        const newDoc = {
-          raceId: activeRaceId,
-          riderNumber: String(rider.riderNumber).trim(), // Ensure consistent string format
-          firstName: rider.firstName,
-          lastName: rider.lastName,
-          eventName: rider.eventName || get().eventName,
-          trackName: rider.trackName || get().trackName,
-          caLicenceNumber: rider.caLicenceNumber,
-          category: rider.category,
-          status: "WAITING",
-          startTime: null,
-          finishTime: null,
-          raceTime: null,
-          timestamp: serverTimestamp(),
-        };
-
-        return addDoc(collectionRef, newDoc);
-      });
-
-    try {
-      await Promise.all(promises);
-      console.log(`Successfully added ${promises.length} riders.`);
-      // The onSnapshot listener handles the state update from here!
-    } catch (error) {
-      console.error("Error importing demo riders:", error);
+      console.error("Error saving finish:", error);
+      set({ finishing: null });
+      toast.error("Failed to save result to cloud");
     }
   },
+importRidersToDb: async (importRiders) => {
+  const { activeRaceId, eventName, trackName } = get();
+
+  if (!db || !activeRaceId) {
+    console.error("Cannot import data: Missing dependencies (db or activeRaceId).");
+    return;
+  }
+
+  const ridersArray = Array.isArray(importRiders) ? importRiders : [importRiders];
   
+  // 1. Filter out invalid rows immediately
+  const validRiders = ridersArray.filter(
+    (r) => r.riderNumber && String(r.riderNumber).trim() !== ""
+  );
+
+  if (validRiders.length < ridersArray.length) {
+    toast.error(`Skipped ${ridersArray.length - validRiders.length} rider(s) with missing numbers`);
+  }
+
+  // 2. Create an array of Promises using setDoc and our Composite ID
+  const promises = validRiders.map((rider) => {
+    const rNumber = String(rider.riderNumber).trim();
+    
+    // 🟢 CREATE THE COMPOSITE ID: Same as addRider and handleStart
+    const customDocId = `${activeRaceId}_${rNumber}`;
+    
+    // 🟢 POINT TO TOP-LEVEL COLLECTION
+    const docRef = doc(db, "riders", customDocId);
+
+    const riderDoc = {
+      raceId: activeRaceId,
+      riderNumber: rNumber,
+      firstName: rider.firstName || "Unknown",
+      lastName: rider.lastName || "Rider",
+      eventName: eventName,
+      trackName: trackName,
+      caLicenceNumber: rider.caLicenceNumber || "",
+      category: rider.category || "Open",
+      status: "WAITING",
+      startTime: null,
+      startTimeMs: null,
+      finishTime: null,
+      finishTimeMs: null,
+      raceTime: null,
+      durationMs: null,
+      timestamp: serverTimestamp(),
+    };
+
+    // 🟢 Use setDoc with merge to prevent overwriting existing progress if re-imported
+    return setDoc(docRef, riderDoc, { merge: true });
+  });
+
+  try {
+    await Promise.all(promises);
+    toast.success(`Successfully imported ${promises.length} riders to ${trackName}`);
+    // Your onSnapshot listener in subscribeToRiders will automatically 
+    // pick these up and update the UI!
+  } catch (error) {
+    console.error("Error importing riders:", error);
+    toast.error("Import failed. Check console for details.");
+  }
+},  
   resetRider: async (riderId) => {
     try {
       const { doc, updateDoc } = await import("firebase/firestore");
@@ -571,5 +510,68 @@ cloneRidersFromTrack: async (sourceTrackName) => {
 
   await Promise.all(clonePromises);
   return { success: true, count: ridersToClone.length };
-}
+},
+fetchRidersForSession: async () => {
+  const { activeRaceId } = get();
+
+  // Guard: Don't fetch if no session is active
+  if (!activeRaceId) {
+    console.warn("No activeRaceId found. Aborting fetch.");
+    return;
+  }
+
+  try {
+    const ridersRef = collection(db, "riders");
+    
+    // 🟢 The Filter: Only get riders for this specific Event + Track combo
+    const q = query(ridersRef, where("raceId", "==", activeRaceId));
+
+    const querySnapshot = await getDocs(q);
+    
+    const loadedRiders = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id, // Ensure we keep the Composite ID for updates
+    }));
+
+    // Update local state with the filtered list
+    set({ riders: loadedRiders });
+    
+    console.log(`📡 Loaded ${loadedRiders.length} riders for session: ${activeRaceId}`);
+  } catch (error) {
+    console.error("Error fetching session riders:", error);
+  }
+},
+syncSessionRiders: async () => {
+  const { activeRaceId } = get();
+  if (!activeRaceId) {
+    toast.error("No active session to sync!");
+    return;
+  }
+
+  set({ loading: true }); // Show a spinner
+  
+  try {
+    const ridersRef = collection(db, "riders");
+    const q = query(ridersRef, where("raceId", "==", activeRaceId));
+    const querySnapshot = await getDocs(q);
+    
+    const freshRiders = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    }));
+
+    set({ 
+      riders: freshRiders, 
+      loading: false 
+    });
+    
+    toast.success(`Synced ${freshRiders.length} riders from cloud`);
+  } catch (error) {
+    console.error("Sync failed:", error);
+    set({ loading: false });
+    toast.error("Sync failed. Check internet connection.");
+  }
+},
+categoryFilter: "ALL", 
+setCategoryFilter: (category) => set({ categoryFilter: category }),
 }));
