@@ -1,75 +1,22 @@
-import React, { useMemo} from "react";
-import { useRaceStore } from "../store/raceStore";
-export const OverallResults = () => {
-  const { riders, eventName } = useRaceStore();
-  const overallData = useMemo(() => {
-    if (!riders.length) return { stageWinners: [], categoryStandings: {} };
-    const eventRiders = riders.filter(r => r.eventName === eventName && r.status === "FINISHED");
+export const convertMsToMinSec = (ms) => {
+    // Calculate total minutes
+    let minutes = Math.floor(ms / 60000); 
 
-    // --- 1. Stage Winners (Fastest per Track) ---
-    const tracks = [...new Set(eventRiders.map(r => r.trackName))];
-    const stageWinners = tracks.map(track => {
-      const trackFinishers = eventRiders.filter(r => r.trackName === track);
-      const fastest = trackFinishers.reduce((prev, curr) => 
-        (prev.durationMs < curr.durationMs) ? prev : curr
-      );
-      return { track, ...fastest };
-    });
+    // Calculate remaining milliseconds after removing whole minutes
+    let remainingMs = ms % 60000;
 
-    // --- 2. Overall GC (Summed per Rider) ---
-    const riderMap = {}; // Key: firstName+lastName+category (or riderNumber)
-  
-    eventRiders.forEach(r => {
-      const key = `${r.riderNumber}-${r.category}`;
-      if (!riderMap[key]) {
-        riderMap[key] = { 
-          name: `${r.firstName} ${r.lastName}`, 
-          riderNumber: r.riderNumber,
-          category: r.category, 
-          totalMs: 0, 
-          stagesCount: 0 
-        };
-      }
-      riderMap[key].totalMs += r.durationMs;
-      riderMap[key].stagesCount += 1;
-    });
+    // Calculate whole seconds from remaining milliseconds
+    let seconds = Math.floor(remainingMs / 1000);
 
-  // Group by Category and Sort
-  const categoryStandings = {};
-  Object.values(riderMap).forEach(rider => {
-    if (!categoryStandings[rider.category]) categoryStandings[rider.category] = [];
-    categoryStandings[rider.category].push(rider);
-  });
+    // Calculate remaining milliseconds after removing whole seconds (these are the hundredths implicitly)
+    let hundredths = Math.floor((remainingMs % 1000) / 10); 
 
-  Object.keys(categoryStandings).forEach(cat => {
-    categoryStandings[cat].sort((a, b) => a.totalMs - b.totalMs);
-  });
+    // Format the output to ensure leading zeros for single-digit numbers for consistent display
+    // padStart ensures the number takes up a certain number of characters
+    let formattedMinutes = String(minutes).padStart(2, '0');
+    let formattedSeconds = String(seconds).padStart(2, '0');
+    let formattedHundredths = String(hundredths).padStart(2, '0');
 
-  return { stageWinners, categoryStandings };
-}, [riders, eventName]);
-return (
-    <div>
-      <h2>Overall Standings</h2>
-      {/* Map through overallData.categoryStandings here */}
-      {overallData.categoryStandings && Object.entries(overallData.categoryStandings).map(([category, standings]) => (
-        <div key={category}>
-          <h3>{category}</h3>
-          <ul>
-            {standings.map((rider, index) => (
-              <li key={rider.riderNumber}>{index + 1}. {rider.name} ({rider.totalMs}ms)</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-
-      <h2>Stage Winners</h2>
-      {overallData.stageWinners && overallData.stageWinners.map(winner => (
-        <div key={winner.track}>
-          <p>{winner.track}: {winner.firstName} {winner.lastName}</p>
-        </div>
-      ))}
-      
-
-    </div>
-  )
-};
+    // Return the formatted string
+    return `${formattedMinutes}:${formattedSeconds}.${formattedHundredths}`;
+}

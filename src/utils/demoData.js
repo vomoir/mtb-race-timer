@@ -58,5 +58,66 @@ export const demoRiders = [
     finishTime: null,
     durationMs: 0,
     raceTime: "--:--:--"
-  }
+  },
+  {
+    id: "demo-5",
+    riderNumber: "105", // Different rider number
+    firstName: "Suzie",
+    lastName: "Creamcheese",
+    caLicenceNumber: "A423449",
+    category: "Ladies",
+    eventName: "NO EVENT",
+    trackName: "NO TRACK", 
+    status: "WAITING",
+    startTime: null,
+    finishTime: null,
+    durationMs: 0,
+    raceTime: "--:--:--"  
+  },
+  {
+    id: "demo-6",
+    riderNumber: "106", // Different rider number
+    firstName: "Amanda",
+    lastName: "Eclair",
+    caLicenceNumber: "C2423449",
+    category: "Ladies",
+    eventName: "NO EVENT",
+    trackName: "NO TRACK", 
+    status: "WAITING",
+    startTime: null,
+    finishTime: null,
+    durationMs: 0,
+    raceTime: "--:--:--"
+  },
+  {
+    id: "demo-7",
+    riderNumber: "107", // Different rider number
+    firstName: "Brenda",
+    lastName: "Biscuit",
+    caLicenceNumber: "C2423449",
+    category: "Junior",
+    eventName: "NO EVENT",
+    trackName: "NO TRACK", 
+    status: "WAITING",
+    startTime: null,
+    finishTime: null,
+    durationMs: 0,
+    raceTime: "--:--:--"
+  },
+  {
+    id: "demo-8",
+    riderNumber: "108", // Different rider number
+    firstName: "Catherine",
+    lastName: "Cupcake",
+    caLicenceNumber: "C2423450",
+    category: "Junior",
+    eventName: "NO EVENT",
+    trackName: "NO TRACK", 
+    status: "WAITING",
+    startTime: null,
+    finishTime: null,
+    durationMs: 0,
+    raceTime: "--:--:--"
+  },
+
 ];

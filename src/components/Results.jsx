@@ -4,9 +4,10 @@ import { Trophy, Download, FileText } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { TableSkeleton } from '../components/LoadingStates';
+import { OverallResults } from "./OverallResults";
 
 const Results = () => {
-  const { raceId, eventName, trackName, isLoading, riders } = useRaceStore();
+  const { activeRaceId, eventName, trackName, isLoading, riders } = useRaceStore();
 
   const { finishedRiders } = useRiderLists(riders);
   const downloadCSV = () => {
@@ -133,7 +134,7 @@ const exportResultsCSV = (riders, eventName, trackName) => {
           <Download size={16} />
           Export CSV
         </button>
-        <button 
+        {/* <button 
           onClick={() => exportResultsCSV(finishedRiders, raceId)}
           className="export-button"
           style={{
@@ -147,7 +148,7 @@ const exportResultsCSV = (riders, eventName, trackName) => {
           }}
         >
           📥 Export CSV (By Category)
-        </button>
+        </button> */}
         <button 
           onClick={() => exportResultsCSV(riders, eventName, trackName)}
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
@@ -182,7 +183,9 @@ const exportResultsCSV = (riders, eventName, trackName) => {
           </div>
         )}
       </div>
-
+      <div>
+      <OverallResults />
+      </div>
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {finishedRiders.length === 0 ? (
           <div className="text-center py-12">
