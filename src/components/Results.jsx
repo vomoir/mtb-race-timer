@@ -5,7 +5,7 @@ import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { TableSkeleton } from '../components/LoadingStates';
 import { OverallResults } from "./OverallResults";
-import { sortRidersByTime } from "../utils/raceResultsCalculations";
+// import { sortRidersByTime } from "../utils/raceResultsCalculations";
 
 // --- HELPER UTILS ---
 const groupBy = (array, key) => array.reduce((acc, obj) => {
@@ -35,7 +35,7 @@ const triggerFileDownload = (content, fileName) => {
 };
 
 const Results = () => {
-  const { activeRaceId, eventName, trackName, isLoading, riders, fetchEventResults } = useRaceStore();
+  const { eventName, trackName, isLoading, riders, fetchEventResults } = useRaceStore();
   const { finishedRiders } = useRiderLists(riders);
 
   // 1. Export Current Track Results (Single View)
@@ -53,7 +53,7 @@ const Results = () => {
     });
 
     const csvContent = [raceDetails, headers, ...rows].join("\n");
-    triggerFileDownload(csvContent, `Results__${new Date().toISOString().split('T')[0]}.csv`);
+    triggerFileDownload(csvContent, `Results__${trackName}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   // 2. Export Comprehensive Event Results (All Tracks + GC)
@@ -164,7 +164,7 @@ const Results = () => {
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
         >
           <Download size={16} />
-          <span>📥</span> Export CSV
+          <span>📥</span> Export Current Track
         </button>
         <button 
           onClick={exportAllResultsCSV}

@@ -8,14 +8,21 @@ import { demoRiders } from "../utils/demoData";
 export const RiderImporter = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
-  const { setRiders, importRidersToDb } = useRaceStore();
+  const { riders, setRiders, importRidersToDb } = useRaceStore();
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const riderNumber = formData.get("riderNumber").trim();
+
+    if (riders.some((r) => r.riderNumber === riderNumber)) {
+      toast.error(`Rider #${riderNumber} is already registered!`);
+      return;
+    }
+
     const newRider = {
       id: crypto.randomUUID(),
-      riderNumber: formData.get("riderNumber"),
+      riderNumber: riderNumber,
       caLicenceNumber: formData.get("caLicence"),
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
@@ -37,27 +44,33 @@ export const RiderImporter = () => {
       const newRiders = [];
 
       lines.forEach((line, index) => {
-        const parts = line.split(",").map((p) => p.trim());
+        // Auto-detect delimiter (Tab for copy-paste/TSV, Comma for standard CSV)
+        const delimiter = line.includes("\t") ? "\t" : ",";
+        const parts = line.split(delimiter).map((p) => p.trim());
 
         // Skip header row
         if (index === 0) return;
 
         // Ensure we have enough columns
-        if (parts.length >= 7) {
+        // New format: CA Licence No, Grade Entered, Race Grade, First Name, Surname, Race No
+        if (parts.length >= 6) {
           const rider = {
-            riderNumber: parts[1], // Race No
-            caLicenceNumber: parts[2], // CA Licence Number
-            category: parts[3], // Grade Entered
-            firstName: parts[5], // First Name
-            lastName: parts[6], // Surname
+            caLicenceNumber: parts[0],
+            category: parts[1], // Grade Entered
+            // parts[2] is Race Grade (e.g. "A")
+            firstName: parts[3],
+            lastName: parts[4],
+            riderNumber: parts[5], // Race No
             status: "WAITING", // Initial state
             startTime: null,
             finishTime: null,
             raceTime: null,
-            timestamp: new Date().toISOString(), // or serverTimestamp() in Firestore
+            timestamp: new Date().toISOString(),
           };
 
-          newRiders.push(rider);
+          if (rider.riderNumber) {
+            newRiders.push(rider);
+          }
         }
       });
 
@@ -134,7 +147,7 @@ export const RiderImporter = () => {
             Drag & drop CSV file here
           </p>
           <p className="text-xs text-slate-400 mb-4">
-            Format: Number, Name, Category
+            Format: CA Licence, Category, Grade, First Name, Surname, Number
           </p>
 
           {/* Mobile-friendly file picker */}
@@ -169,39 +182,6 @@ export const RiderImporter = () => {
         <form onSubmit={handleManualSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Rider Number
-            </label>
-            <input
-              name="riderNumber"
-              type="text"
-              required
-              className="mt-1 block w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              First Name
-            </label>
-            <input
-              name="firstName"
-              type="text"
-              required
-              className="mt-1 block w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Last Name
-            </label>
-            <input
-              name="lastName"
-              type="text"
-              required
-              className="mt-1 block w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
               CA Licence Number
             </label>
             <input
@@ -209,25 +189,72 @@ export const RiderImporter = () => {
               type="text"
               required
               className="mt-1 block w-full border rounded-lg px-3 py-2"
+              placeholder="AC..."
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Category
+              Grade / Category
             </label>
             <input
               name="category"
               type="text"
               required
               className="mt-1 block w-full border rounded-lg px-3 py-2"
+              placeholder="e.g. B Grade Men"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-bold"
-          >
-            Add Rider
-          </button>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                First Name
+              </label>
+              <input
+                name="firstName"
+                type="text"
+                required
+                className="mt-1 block w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Surname
+              </label>
+              <input
+                name="lastName"
+                type="text"
+                required
+                className="mt-1 block w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Race Number
+            </label>
+            <input
+              name="riderNumber"
+              type="text"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              required
+              className="mt-1 block w-full border rounded-lg px-3 py-2"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="reset"
+              className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-bold hover:bg-slate-300 transition-colors"
+            >
+              Clear Form
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            >
+              Add Rider
+            </button>
+          </div>
         </form>
       )}
     </Card>

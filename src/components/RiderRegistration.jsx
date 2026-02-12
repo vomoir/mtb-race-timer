@@ -1,4 +1,4 @@
-import React, { useState} from "react";
+import React, { useState, useEffect } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { TrackPicker } from "./TrackPicker";
 import {RiderImporter} from "./RiderImporter";
@@ -7,13 +7,20 @@ import { Copy, Users, ChevronRight, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export const RiderRegistration = () => {
-  const { riders, eventName, trackName, cloneRidersFromTrack } = useRaceStore();
+  const { riders, eventName, trackName, cloneRidersFromTrack, fetchEventResults } = useRaceStore();
   const [isCopying, setIsCopying] = useState(false);
+  const [otherTracks, setOtherTracks] = useState([]);
 
   // Get a list of unique tracks in this event that AREN'T the current one
-  const otherTracks = [...new Set(riders
-    .filter(r => r.eventName === eventName && r.trackName !== trackName)
-    .map(r => r.trackName))];
+  useEffect(() => {
+    const loadTracks = async () => {
+      if (!eventName) return;
+      const allRiders = await fetchEventResults(eventName);
+      const tracks = [...new Set(allRiders.filter(r => r.trackName && r.trackName !== trackName).map(r => r.trackName))].sort();
+      setOtherTracks(tracks);
+    };
+    loadTracks();
+  }, [eventName, trackName, fetchEventResults]);
 
   const handleCopy = async (sourceTrack) => {
     setIsCopying(true);

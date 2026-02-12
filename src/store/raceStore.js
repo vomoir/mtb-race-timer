@@ -13,7 +13,6 @@ import {
   onSnapshot,
   serverTimestamp,
   query,
-  orderBy,
   where,
 } from "firebase/firestore";
 import {
@@ -131,7 +130,9 @@ addRider: async (riderData) => {
     status: "WAITING",
     createdAt: serverTimestamp(),
     startTime: null,
+    startTimeMs: null,
     finishTime: null,
+    finishTimeMs: null,
     durationMs: null,
     raceTime: null,
   };
@@ -207,7 +208,7 @@ addRider: async (riderData) => {
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   raceId: "", 
-  setRaceId: (id) => set({ raceId: id }),
+  setRaceId: (id) => set({ raceId: id, activeRaceId: id }),
   now: getTime(), // reference time
   tick: () => set({ now: new Date() }),
   isOnline: navigator.onLine,
@@ -243,6 +244,9 @@ addRider: async (riderData) => {
     if (!riderNumber.trim()) return;
     const { riders, eventName, trackName, activeRaceId } = get();
 
+    // Use passed raceId if available, otherwise fallback to activeRaceId
+    const effectiveRaceId = raceId || activeRaceId;
+
     // 1. Check local state for the rider
     const existingRider = riders.find((r) => r.riderNumber === riderNumber);
     const nowIso = getTime();
@@ -250,7 +254,7 @@ addRider: async (riderData) => {
 
     // 2. CONSISTENCY: Always use the new top-level path and Composite ID
     // If the rider already has an ID, use it. Otherwise, build the composite one.
-    const docId = existingRider?.id || `${activeRaceId}_${riderNumber}`;
+    const docId = existingRider?.id || `${effectiveRaceId}_${riderNumber}`;
     const docRef = doc(db, "riders", docId); // 🟢 TOP LEVEL COLLECTION
 
     const startData = {
@@ -258,7 +262,7 @@ addRider: async (riderData) => {
       startTimeMs: nowMs,
       status: "ON_TRACK",
       riderNumber: riderNumber, // Ensure this is stored
-      raceId: activeRaceId,     // Ensure this is stored for ad-hoc riders
+      raceId: effectiveRaceId,     // Ensure this is stored for ad-hoc riders
       eventName: eventName, // Add this
       trackName: trackName, // Add this
     };
@@ -494,12 +498,11 @@ importRidersToDb: async (importRiders) => {
     }
 },
 cloneRidersFromTrack: async (sourceTrackName) => {
-  const { riders, eventName, trackName, addRider } = get();
+  const { riders, eventName, trackName, addRider, fetchEventResults } = get();
   
   // 1. Find all riders from the source track in THIS event
-  const sourceRiders = riders.filter(
-    (r) => r.eventName === eventName && r.trackName === sourceTrackName
-  );
+  const allRiders = await fetchEventResults(eventName);
+  const sourceRiders = allRiders.filter(r => r.trackName === sourceTrackName);
 
   if (sourceRiders.length === 0) return { success: false, count: 0 };
 
@@ -514,7 +517,7 @@ cloneRidersFromTrack: async (sourceTrackName) => {
 
   // 3. Map to new objects (stripping timing data) and save
   const clonePromises = ridersToClone.map(rider => {
-    const { id, startTime, finishTime, durationMs, raceTime, ...cleanData } = rider;
+    const { id, startTime, startTimeMs, finishTime, finishTimeMs, durationMs, raceTime, ...cleanData } = rider;
     return addRider({
       ...cleanData,
       trackName: trackName, // Assign to current track
