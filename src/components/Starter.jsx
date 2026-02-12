@@ -23,6 +23,7 @@ const StarterComponent = () => {
 
   // 🟢 The logic: Filter the list based on the selected category
   const filteredRiders = riders.filter(rider => {
+    if (rider.status !== "WAITING") return false;
     if (categoryFilter === "ALL") return true;
     return rider.category === categoryFilter;
   });

@@ -9,6 +9,7 @@ import {
   collection,
   doc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   serverTimestamp,
   query,
@@ -93,16 +94,17 @@ setSession: async (event, track) => {
   syncPendingStarts: async () => {
     const pending = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
     if (pending.length === 0) return;
-    const collectionRef = collection(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "mtb_riders"
-    );
+
     for (const rider of pending) {
-      await addDoc(collectionRef, rider);
+      // Use the new 'riders' collection and try to maintain ID consistency
+      if (rider.raceId && rider.riderNumber) {
+        const customId = `${rider.raceId}_${rider.riderNumber}`;
+        const docRef = doc(db, "riders", customId);
+        await setDoc(docRef, rider, { merge: true });
+      } else {
+        // Fallback for data without ID components
+        await addDoc(collection(db, "riders"), rider);
+      }
     }
     localStorage.removeItem("pendingStarts");
   },
@@ -150,6 +152,18 @@ addRider: async (riderData) => {
     return { success: false, error };
   }
 },
+  deleteRider: async (riderId) => {
+    try {
+      await deleteDoc(doc(db, "riders", riderId));
+      set((state) => ({
+        riders: state.riders.filter((r) => r.id !== riderId),
+      }));
+      toast.success("Rider deleted");
+    } catch (error) {
+      console.error("Error deleting rider:", error);
+      toast.error("Failed to delete rider");
+    }
+  },
   initAuth: async () => {
     await setPersistence(auth, browserLocalPersistence);
     // sign in anonymously if not already signed in
@@ -541,6 +555,47 @@ fetchRidersForSession: async () => {
     console.error("Error fetching session riders:", error);
   }
 },
+syncEventRiders: async (eventName) => {
+  set({ riders: [] }); // Clear current riders to avoid ghost data
+  const ridersRef = collection(db, "riders");
+  const q = query(
+    ridersRef, 
+    where("eventName", "==", eventName),
+    where("status", "in", ["WAITING", "ON_TRACK"])
+  );
+
+  try {
+    const querySnapshot = await getDocs(q);
+    const loadedRiders = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    }));
+    
+    set({ riders: loadedRiders });
+    if (loadedRiders.length > 0) {
+      toast.success(`Synced ${loadedRiders.length} riders for ${eventName}`);
+    }
+  } catch (error) {
+    console.error("Error syncing event riders:", error);
+    toast.error("Failed to sync riders");
+  }
+},
+fetchEventResults: async (eventName) => {
+  const ridersRef = collection(db, "riders");
+  const q = query(ridersRef, where("eventName", "==", eventName));
+  
+  try {
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    }));
+  } catch (error) {
+    console.error("Error fetching event results:", error);
+    return [];
+  }
+},
+
 syncSessionRiders: async () => {
   const { activeRaceId } = get();
   if (!activeRaceId) {
