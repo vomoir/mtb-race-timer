@@ -34,8 +34,8 @@ export const RiderRegistration = () => {
     }
   };
 return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+    <div>
+      <div>
         <h2 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
           <Users className="text-blue-600" />
           Rider Management
@@ -73,7 +73,7 @@ return (
           </div>
         )}
         
-        <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center">
+        <div className="border-2 border-dashed border-slate-200 rounded-xl p-2 sm:p-8 text-center">
           <RiderImporter />
         </div>
       </div>

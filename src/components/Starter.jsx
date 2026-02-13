@@ -10,7 +10,7 @@ import ConfirmDialog from "./ConfirmDialog";
 const StarterComponent = () => {
   const {
     riderNumber,
-    raceId,
+    activeRaceId,
     loading,
     lastStarted,
     localLogs,
@@ -30,7 +30,7 @@ const StarterComponent = () => {
   });
   const onSubmit = (e) => {
     e.preventDefault();
-    handleStart(raceId, riderNumber);
+    handleStart(activeRaceId, riderNumber);
     setRiderNumber("");
   };
   // Moves rider from list of waiting riders into the "start zone"

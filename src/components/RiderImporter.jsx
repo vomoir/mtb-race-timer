@@ -95,9 +95,8 @@ export const RiderImporter = () => {
   };
 
   return (
-    <Card className="p-8 space-y-8 max-w-2xl mx-auto mt-10">
-      {/* Header */}
-      <div className="text-center space-y-4">
+    <Card className="p-4 sm:p-8 space-y-4 sm:space-y-8 max-w-2xl mx-auto">      
+      <div>
         <div className="mx-auto bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center text-slate-500">
           <Users size={32} />
         </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { useRaceStore } from "../store/raceStore";
 import { useNavigate, useLocation } from "react-router-dom"; // Add these
-import { Clock, Wifi, WifiOff, Hash, Play, Flag, Trophy, File } from "lucide-react";
+import { Clock, Wifi, WifiOff, Hash, Play, Flag, Trophy, File, Share2 } from "lucide-react";
 import {RaceClock} from "./RaceClock";
 import { SyncButton } from "./starter/SyncButton";
 
@@ -9,7 +9,7 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation(); // This tells us the current URL
   
-  const { raceId, isOnline, trackName, setTrackName, eventName } = useRaceStore();
+  const { raceId, isOnline, trackName, setTrack, eventName } = useRaceStore();
 
   // Helper to check if a tab is active based on the URL
   const isActive = (path) => location.pathname === path;
@@ -26,6 +26,10 @@ const SwitchEventButton = () => {
     </button>
   );
 };
+
+  const shareUrl = eventName && trackName && trackName !== 'NO TRACK' 
+    ? `${window.location.origin}/?event=${encodeURIComponent(eventName)}&track=${encodeURIComponent(trackName)}`
+    : null;
 
   return (
     <div className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
@@ -54,7 +58,7 @@ const SwitchEventButton = () => {
                 <input 
                   type="text"
                   value={trackName}
-                  onChange={(e) => setTrackName(e.target.value)}
+                  onChange={(e) => setTrack(e.target.value)}
                   className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-orange-400 focus:border-orange-500 outline-none uppercase"
                   placeholder="NO TRACK"
                 />
@@ -64,6 +68,17 @@ const SwitchEventButton = () => {
 
               <div className="flex gap-2">
                 <SyncButton />
+                {shareUrl && (
+                  <a 
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Finisher Link (Right-click to copy)"
+                    className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors flex items-center justify-center"
+                  >
+                    <Share2 size={16} />
+                  </a>
+                )}
                 {/* Other header actions like Clock or Finish List */}
               </div>
           <SwitchEventButton  /> 

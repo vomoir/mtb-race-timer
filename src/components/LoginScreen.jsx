@@ -1,5 +1,5 @@
-import React, {useState} from "react";
-// import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Clock, LogIn, Trophy, MapPin, ArrowRight, PlusCircle, History, Trash2 } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { InstallButton } from "./InstallButton";
@@ -11,8 +11,21 @@ const LoginScreen = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const setEvent = useRaceStore((state) => state.setEvent);
-  const syncEventRiders = useRaceStore((state) => state.syncEventRiders);
+  const { setEvent, setTrack, syncEventRiders } = useRaceStore();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const eventNameFromUrl = searchParams.get('event');
+    const trackNameFromUrl = searchParams.get('track');
+
+    if (eventNameFromUrl && trackNameFromUrl) {
+      setEvent(eventNameFromUrl);
+      setTrack(trackNameFromUrl);
+      syncEventRiders(eventNameFromUrl);
+      navigate('/finish');
+    }
+  }, [searchParams, navigate, setEvent, setTrack, syncEventRiders]);
 
   const handleStart = (name) => {
     if (!name) return;

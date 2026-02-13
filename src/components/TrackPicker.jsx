@@ -1,4 +1,4 @@
-import React, {useRef, useState} from "react";
+import React, {useRef, useState, useEffect} from "react";
 import TrackDialog from "./TrackDialog";
 import { useRaceStore } from "../store/raceStore";
 import { Pencil, Lock } from "lucide-react";
@@ -7,12 +7,41 @@ import { Pencil, Lock } from "lucide-react";
 // const ForwardedTrackDialog = forwardRef(TrackDialog);
 
 export const TrackPicker = () => {
-  const { trackName, setTrack, riders, eventName, renameTrack } = useRaceStore();
+  const { trackName, setTrack, riders, eventName, renameTrack, fetchEventResults } = useRaceStore();
+  const [dbTracks, setDbTracks] = useState([]);
+
+  useEffect(() => {
+    const loadTracks = async () => {
+      if (eventName) {
+        const results = await fetchEventResults(eventName);
+        const tracks = [...new Set(results.map(r => r.trackName))].filter(t => t && t !== "NO TRACK").sort();
+        setDbTracks(tracks);
+
+        // Auto-select the most recent track if none is currently selected
+        if (trackName === "NO TRACK" && results.length > 0) {
+          const latestRider = results.reduce((latest, current) => {
+            const getT = (r) => {
+              const t = r.timestamp || r.createdAt || r.startTime || 0;
+              // Handle Firestore Timestamp objects {seconds, nanoseconds} or dates/strings
+              return t.seconds ? t.seconds : new Date(t).getTime();
+            };
+            return getT(current) > getT(latest) ? current : latest;
+          }, results[0]);
+
+          if (latestRider && latestRider.trackName && latestRider.trackName !== "NO TRACK") {
+            setTrack(latestRider.trackName);
+          } else if (tracks.length > 0) {
+            setTrack(tracks[tracks.length - 1]); // Fallback to last alphabetical
+          }
+        }
+      }
+    };
+    loadTracks();
+  }, [eventName, fetchEventResults]);
   
   // Get all unique tracks already created for this specific event
-  const existingTracks = [...new Set(riders
-    .filter(r => r.eventName === eventName)
-    .map(r => r.trackName))].filter(Boolean);
+  const localTracks = riders.filter(r => r.eventName === eventName).map(r => r.trackName);
+  const existingTracks = [...new Set([...dbTracks, ...localTracks])].filter(Boolean).sort();
 
   // Guard Rail Logic
   const currentTrackRiders = riders.filter(r => r.trackName === trackName);
