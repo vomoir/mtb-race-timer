@@ -23,7 +23,7 @@ export const RiderImporter = () => {
     }
 
     const newRider = {
-      id: crypto.randomUUID(),
+      id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
       riderNumber: riderNumber,
       caLicenceNumber: formData.get("caLicence") || "TBA",
       firstName: formData.get("firstName"),

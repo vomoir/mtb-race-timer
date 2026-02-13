@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Clock, LogIn, Trophy, MapPin, ArrowRight, PlusCircle, History, Trash2 } from "lucide-react";
+import { Clock, LogIn, Trophy, MapPin, ArrowRight, PlusCircle, History, Trash2, Share2 } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { InstallButton } from "./InstallButton";
+import toast from "react-hot-toast";
 
 const LoginScreen = () => {
   const [input, setInput] = useState('');
@@ -11,7 +12,7 @@ const LoginScreen = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const { setEvent, setTrack, syncEventRiders } = useRaceStore();
+  const { setEvent, setTrack, syncEventRiders, fetchEventResults } = useRaceStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -19,13 +20,32 @@ const LoginScreen = () => {
     const eventNameFromUrl = searchParams.get('event');
     const trackNameFromUrl = searchParams.get('track');
 
-    if (eventNameFromUrl && trackNameFromUrl) {
-      setEvent(eventNameFromUrl);
-      setTrack(trackNameFromUrl);
-      syncEventRiders(eventNameFromUrl);
-      navigate('/finish');
+    if (eventNameFromUrl) {
+      const initDeepLink = async () => {
+        setEvent(eventNameFromUrl);
+        syncEventRiders(eventNameFromUrl);
+
+        if (trackNameFromUrl) {
+          setTrack(trackNameFromUrl);
+        } else {
+          // If no track specified, try to auto-detect the most recent one
+          const results = await fetchEventResults(eventNameFromUrl);
+          if (results.length > 0) {
+            const latestRider = results.reduce((latest, current) => {
+              const getT = (r) => r.timestamp || r.createdAt || r.startTime || 0;
+              return getT(current) > getT(latest) ? current : latest;
+            }, results[0]);
+            
+            if (latestRider?.trackName && latestRider.trackName !== "NO TRACK") {
+              setTrack(latestRider.trackName);
+            }
+          }
+        }
+        navigate('/finish');
+      };
+      initDeepLink();
     }
-  }, [searchParams, navigate, setEvent, setTrack, syncEventRiders]);
+  }, [searchParams, navigate, setEvent, setTrack, syncEventRiders, fetchEventResults]);
 
   const handleStart = (name) => {
     if (!name) return;
@@ -47,6 +67,13 @@ const LoginScreen = () => {
     const newHistory = history.filter(h => h !== name);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));
     setHistory(newHistory);
+  };
+
+  const shareEvent = (e, name) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/?event=${encodeURIComponent(name)}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Event link copied to clipboard!");
   };
 
 return (
@@ -78,6 +105,13 @@ return (
                   >
                     <span className="font-bold text-slate-700">{prevEvent}</span>
                     <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500" />
+                  </button>
+                  <button
+                    onClick={(e) => shareEvent(e, prevEvent)}
+                    className="p-4 text-slate-300 hover:text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl transition-all"
+                    title="Share Event Link"
+                  >
+                    <Share2 size={18} />
                   </button>
                   <button
                     onClick={(e) => removeEvent(e, prevEvent)}

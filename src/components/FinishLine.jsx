@@ -39,7 +39,7 @@ const FinishLine = () => {
     setPendingFinishes((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),        
+        id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
         finishTime: getTime(),
         finishTimeMs: getTimeMs(),
         displayTime: getTime(),
