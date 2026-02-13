@@ -78,7 +78,7 @@ const StarterComponent = () => {
               inputMode="numeric"
               value={riderNumber}
               onChange={(e) => setRiderNumber(e.target.value)}
-              className="w-full text-4xl font-bold p-4 text-center border-2 border-slate-300 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none transition-all placeholder:text-slate-200"
+              className="w-full text-3xl sm:text-4xl font-bold p-3 sm:p-4 text-center border-2 border-slate-300 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none transition-all placeholder:text-slate-200"
               placeholder="000"
               autoFocus
             />
@@ -86,7 +86,7 @@ const StarterComponent = () => {
           <button
             type="submit"
             disabled={!riderNumber || loading}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xl font-bold py-6 rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-3"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-lg sm:text-xl font-bold py-4 sm:py-6 rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             {loading ? <RefreshCw className="animate-spin" /> : "START RIDER"}
           </button>

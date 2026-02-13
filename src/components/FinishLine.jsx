@@ -9,6 +9,8 @@ import {
   Flag,
   Save,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
@@ -17,6 +19,7 @@ import { getTime, getTimeMs } from "../utils/utils.js";
 
 import { getRiderOnTrack } from "../utils/utils"; // adjust imports
 import ConfirmDialog from "./ConfirmDialog";
+import TrackDialog from "./TrackDialog";
 
 const FinishLine = () => {
   const {
@@ -35,6 +38,10 @@ const FinishLine = () => {
   const [pendingFinishes, setPendingFinishes] = useState([]);
   const { ridersOnTrack, finishedRiders } = useRiderLists();
   const confirmDialog = useRef(null);
+  const dialogRef = useRef(null);
+  const [activeId, setActiveId] = useState(null);
+  const [isRecentExpanded, setIsRecentExpanded] = useState(true);
+  const [isLocalLogExpanded, setIsLocalLogExpanded] = useState(false);
   const handleCapture = () => {    
     setPendingFinishes((prev) => [
       ...prev,
@@ -59,7 +66,7 @@ const FinishLine = () => {
     if (riderOnTrack) {
       handleFinish(riderOnTrack);
       setPendingFinishes((prev) =>
-        prev.filter((p) => p.id !== riderOnTrack.riderNumber)
+        prev.filter((p) => p.id !== pendingItem.id)
       );
     } else {
       toast(`Rider #${riderOnTrack.riderNumber} is not currently on track!`);
@@ -90,6 +97,22 @@ const FinishLine = () => {
     handleSave(rider);
     removePending(rider);
   };
+
+  const onDialogSubmit = (val) => {
+    if (activeId) {
+      const item = pendingFinishes.find((p) => p.id === activeId);
+      if (item) {
+        const updatedItem = { ...item, riderNumber: val };
+        setPendingFinishes((prev) =>
+          prev.map((p) => (p.id === activeId ? updatedItem : p))
+        );
+        // Attempt to save immediately upon dialog entry
+        handlePendingSave(updatedItem);
+      }
+    }
+    setActiveId(null);
+  };
+
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* SOLO START TOGGLE */}
@@ -115,7 +138,7 @@ const FinishLine = () => {
         </button>
       </div>
       {/* Capture finish Section */}
-      <Card className="flex flex-col h-[500px] border-l-4 border-l-red-600">
+      <Card className="flex flex-col max-h-[500px] border-l-4 border-l-red-600 transition-all duration-300">
         <div className="p-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <Flag className="text-red-600" size={24} />
@@ -125,7 +148,7 @@ const FinishLine = () => {
         <div className="p-4">
           <button
             onClick={handleCapture}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2"
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-xl shadow-lg flex flex-row items-center justify-center gap-4"
           >
             <Timer size={32} className="text-white" />
             <span className="text-xl font-black uppercase tracking-widest">
@@ -142,21 +165,15 @@ const FinishLine = () => {
               <div className="bg-slate-800 text-white font-mono rounded px-2 py-1 font-bold">
                 {item.displayTime}
               </div>
-              <input
-                autoFocus={index === 0}
-                value={item.riderNumber}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setPendingFinishes((prev) =>
-                    prev.map((p) =>
-                      p.id === item.id ? { ...p, riderNumber: val } : p
-                    )
-                  );
+              <button
+                onClick={() => {
+                  setActiveId(item.id);
+                  dialogRef.current.open();
                 }}
-                onKeyDown={(e) => e.key === "Enter" && handlePendingSave(item)}
-                placeholder="#"
-                className="flex-1 w-12 font-bold p-1 text-center border border-slate-300 rounded"
-              />
+                className="flex-1 h-10 font-bold text-center border border-slate-300 rounded bg-white hover:bg-slate-50 transition-colors flex items-center justify-center"
+              >
+                {item.riderNumber || <span className="text-slate-300">#</span>}
+              </button>
               <button
                 title="Save Captured Time"
                 onClick={() => savePending(item)}
@@ -287,9 +304,14 @@ const FinishLine = () => {
       {/* RECENTLY FINISHED */}
       {finishedRiders.length > 0 && (
         <div className="opacity-75">
-          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+          <button 
+            onClick={() => setIsRecentExpanded(!isRecentExpanded)}
+            className="w-full flex items-center justify-between text-sm font-bold text-slate-500 uppercase tracking-wider mb-3"
+          >
             Recently Finished
-          </h3>
+            {isRecentExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          {isRecentExpanded && (
           <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
             {finishedRiders.slice(0, 5).map((rider) => (
               <div
@@ -313,14 +335,20 @@ const FinishLine = () => {
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
       {/* LOCAL LOGS */}
       <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 mt-8">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+        <button 
+          onClick={() => setIsLocalLogExpanded(!isLocalLogExpanded)}
+          className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider mb-3"
+        >
           Local Backup Log (Finishes)
-        </h3>
+          {isLocalLogExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        {isLocalLogExpanded && (
         <div className="space-y-2">
           {finishLogs.slice(0, 5).map((log, i) => (
             <div
@@ -334,8 +362,15 @@ const FinishLine = () => {
             </div>
           ))}
         </div>
+        )}
       </div>
       <ConfirmDialog ref={confirmDialog} />
+      <TrackDialog 
+        ref={dialogRef}
+        title="Enter Rider Number"
+        placeholder="Rider #"
+        onSubmit={onDialogSubmit}
+      />
     </div>
   );
 };

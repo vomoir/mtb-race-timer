@@ -9,6 +9,7 @@ const TrackDialog = forwardRef(function TrackDialog(
 
   useImperativeHandle(ref, () => ({
     open() {
+      if (inputRef.current) inputRef.current.value = "";
       dialogRef.current.showModal();
       setTimeout(() => inputRef.current?.focus(), 0);
     },
@@ -20,8 +21,11 @@ const TrackDialog = forwardRef(function TrackDialog(
   const handleSubmit = (e) => {
     e.preventDefault();
     const value = inputRef.current.value.trim().toUpperCase();
-    if (value) onSubmit(value);
-    dialogRef.current.close();
+    try {
+      if (value) onSubmit(value);
+    } finally {
+      dialogRef.current.close();
+    }
   };
 
   return (

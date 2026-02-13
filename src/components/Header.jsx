@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { useNavigate, useLocation } from "react-router-dom"; // Add these
-import { Clock, Wifi, WifiOff, Hash, Play, Flag, Trophy, File, Share2 } from "lucide-react";
+import { Clock, Wifi, WifiOff, Hash, Play, Flag, Trophy, File, Share2, LogOut, Menu, X } from "lucide-react";
 import {RaceClock} from "./RaceClock";
 import { SyncButton } from "./starter/SyncButton";
 
 const Header = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation(); // This tells us the current URL
   
@@ -21,8 +22,10 @@ const SwitchEventButton = () => {
     <button 
       onClick={logout}
       className="text-xs font-bold text-slate-400 hover:text-red-500 flex items-center gap-1"
+      title="Exit Event"
     >
-      EXIT EVENT
+      <LogOut size={16} />
+      <span className="hidden sm:inline">EXIT</span>
     </button>
   );
 };
@@ -30,6 +33,11 @@ const SwitchEventButton = () => {
   const shareUrl = eventName && trackName && trackName !== 'NO TRACK' 
     ? `${window.location.origin}/?event=${encodeURIComponent(eventName)}&track=${encodeURIComponent(trackName)}`
     : null;
+
+  const handleNav = (path) => {
+    navigate(path);
+    setIsMenuOpen(false);
+  };
 
   return (
     <div className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
@@ -87,9 +95,18 @@ const SwitchEventButton = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-800 rounded-lg p-1 max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <button
-          onClick={() => navigate("/registration")}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="sm:hidden w-full bg-slate-800 text-slate-300 hover:text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2 mb-2 transition-colors"
+        >
+          {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          <span>{isMenuOpen ? "CLOSE MENU" : "MENU"}</span>
+        </button>
+
+      <div className={`${isMenuOpen ? "grid" : "hidden"} sm:grid grid-cols-1 sm:grid-cols-4 gap-1 bg-slate-800 rounded-lg p-1`}>
+        <button
+          onClick={() => handleNav("/registration")}
           className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/registration")
               ? "bg-green-600 text-white shadow-md"
@@ -100,7 +117,7 @@ const SwitchEventButton = () => {
         </button>
 
         <button
-          onClick={() => navigate("/starter")}
+          onClick={() => handleNav("/starter")}
           className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/starter")
               ? "bg-green-600 text-white shadow-md"
@@ -111,7 +128,7 @@ const SwitchEventButton = () => {
         </button>
 
         <button
-          onClick={() => navigate("/finish")}
+          onClick={() => handleNav("/finish")}
           className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/finish")
               ? "bg-red-600 text-white shadow-md"
@@ -122,7 +139,7 @@ const SwitchEventButton = () => {
         </button>
 
         <button
-          onClick={() => navigate("/results")}
+          onClick={() => handleNav("/results")}
           className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/results")
               ? "bg-blue-600 text-white shadow-md"
@@ -131,6 +148,7 @@ const SwitchEventButton = () => {
         >
           <Trophy size={16} /> Resulter
         </button>
+      </div>
       </div>
     </div>
   );

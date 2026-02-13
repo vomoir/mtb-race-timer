@@ -85,6 +85,7 @@ export const RiderImporter = () => {
 
       setRiders(newRiders);
       importRidersToDb(newRiders);
+      toast.success(`Imported ${newRiders.length} riders successfully`);
     };
     reader.readAsText(file);
   };
@@ -161,12 +162,12 @@ export const RiderImporter = () => {
           {/* Mobile-friendly file picker */}
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,text/csv,application/vnd.ms-excel,text/plain"
             className="hidden"
             id="fileInput"
+            onClick={(e) => (e.target.value = null)}
             onChange={(e) => {
               if (e.target.files[0]) handleFiles(e.target.files[0]);
-              toast.success("File import successful");
             }}
           />
           <div className="flex gap-3 justify-center flex-wrap">

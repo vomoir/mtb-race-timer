@@ -22,14 +22,15 @@ const LoginScreen = () => {
 
     if (eventNameFromUrl) {
       const initDeepLink = async () => {
-        setEvent(eventNameFromUrl);
-        syncEventRiders(eventNameFromUrl);
+        const upperEventName = eventNameFromUrl.toUpperCase();
+        setEvent(upperEventName);
+        syncEventRiders(upperEventName);
 
         if (trackNameFromUrl) {
           setTrack(trackNameFromUrl);
         } else {
           // If no track specified, try to auto-detect the most recent one
-          const results = await fetchEventResults(eventNameFromUrl);
+          const results = await fetchEventResults(upperEventName);
           if (results.length > 0) {
             const latestRider = results.reduce((latest, current) => {
               const getT = (r) => r.timestamp || r.createdAt || r.startTime || 0;
@@ -49,12 +50,17 @@ const LoginScreen = () => {
 
   const handleStart = (name) => {
     if (!name) return;
+    if (name.length < 3) {
+      toast.error("Event name must be at least 3 characters long");
+      return;
+    }
+    const upperName = name.toUpperCase();
     
     // Update history list (prevent duplicates)
-    const newHistory = [name, ...history.filter(h => h !== name)].slice(0, 5);
+    const newHistory = [upperName, ...history.filter(h => h !== upperName)].slice(0, 5);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
-    setEvent(name); 
-    syncEventRiders(name);   
+    setEvent(upperName); 
+    syncEventRiders(upperName);   
   };
 
   const clearHistory = () => {
@@ -136,7 +142,7 @@ return (
               className="flex-1 w-full bg-slate-100 border-none rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="e.g. Dungog Day 2"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value.toUpperCase())}
             />
             <button 
               onClick={() => handleStart(input)}
