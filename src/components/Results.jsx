@@ -157,34 +157,29 @@ const Results = () => {
               {finishedRiders.length} riders finished
             </p>
           )}
-          </div>
-        <button
-          onClick={exportCurrentTrackCSV}
-          disabled={finishedRiders.length === 0}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-        >
-          <Download size={16} />
-          <span>📥</span> Export Current Track
-        </button>
-        <button 
-          onClick={exportAllResultsCSV}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
-        >
-          <span>📥</span> Export Official Results
-        </button>
-      </div>
-      <div className="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
-        {/* 1. Global Event Header */}
-        <div className="flex justify-between items-center mb-8">
-          {/* <EventSummary /> */}
         </div>
-
-        <hr className="my-8 border-slate-200" />
-
+        <div className="flex gap-3">
+          <button
+            onClick={exportCurrentTrackCSV}
+            disabled={finishedRiders.length === 0}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+          >
+            <Download size={16} />
+            Export Current Track
+          </button>
+          <button 
+            onClick={exportAllResultsCSV}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm transition-colors"
+          >
+            <span>📥</span> Export Official Results
+          </button>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto p-4 bg-slate-50 rounded-xl">
         {/* 2. Detailed View for Selected Track */}
         {trackName ? (
           <section>
-            <div className="flex justify-between items-end mb-4">
+            <div className="flex justify-between items-end">
               <div>
                 <h2 className="text-3xl font-black italic text-slate-900 uppercase">
                   {trackName} Results
@@ -197,9 +192,6 @@ const Results = () => {
             <p className="text-slate-500 font-medium">Select a track above to view detailed results and rankings.</p>
           </div>
         )}
-      </div>
-      <div>
-      <OverallResults />
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {finishedRiders.length === 0 ? (
@@ -271,6 +263,9 @@ const Results = () => {
             
           </div>    
         )}
+      </div>
+      <div>
+        <OverallResults />
       </div>
     </div>
   );

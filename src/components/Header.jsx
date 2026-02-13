@@ -11,13 +11,6 @@ const Header = () => {
   
   const { raceId, isOnline, trackName, setTrackName, eventName } = useRaceStore();
 
-  // const handleLogout = () => {
-  //   // Clear the store and redirect to login
-  //   setRaceId(""); 
-  //   logout(); // Ensure this is called as a function
-  //   navigate("/"); 
-  // };
-
   // Helper to check if a tab is active based on the URL
   const isActive = (path) => location.pathname === path;
 // components/Header.jsx
@@ -36,13 +29,14 @@ const SwitchEventButton = () => {
 
   return (
     <div className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
-      <div className="flex justify-between items-center mb-4 max-w-2xl mx-auto">
-        <h1 className="text-xl font-bold flex items-center gap-2">
+      <div className="max-w-2xl mx-auto mb-4 space-y-4">
+        <h1 className="text-xl font-bold flex items-center justify-center gap-2">
           <Clock className="text-yellow-400" />
           MTB Timing Pro - {eventName || "No Event Selected"}
         </h1>
-        <RaceClock />
-        <div className="flex items-center gap-3">
+        <div className="flex justify-between items-center">
+          <RaceClock />
+          <div className="flex items-center gap-3">
           <div
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
               isOnline
@@ -68,21 +62,13 @@ const SwitchEventButton = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1 text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
-            <Hash size={12} className="text-blue-400" />            
-            <div className="flex justify-between items-center p-4 bg-white border-b">
-              <div>
-                <h1 className="text-xl font-black">{trackName}</h1>
-                <p className="text-xs text-slate-500 uppercase tracking-widest">{eventName}</p>
-              </div>
               <div className="flex gap-2">
                 <SyncButton />
                 {/* Other header actions like Clock or Finish List */}
               </div>
-            </div>
-          </div>
           <SwitchEventButton  /> 
        </div>
+      </div>
       </div>
 
       {/* Navigation Tabs */}

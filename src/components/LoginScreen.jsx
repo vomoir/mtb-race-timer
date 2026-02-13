@@ -99,6 +99,10 @@ return (
             </button>
           </div>
         </div>
+
+        <div className="mt-8 flex justify-center">
+          <InstallButton />
+        </div>
       </div>
     </div>
   );

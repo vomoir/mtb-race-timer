@@ -1,14 +1,16 @@
-import { useState } from "react";
-import { Users } from "lucide-react";
+import { useState, useRef } from "react";
+import { Users, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { Card } from "./Card";
 import { demoRiders } from "../utils/demoData";
+import ConfirmDialog from "./ConfirmDialog";
 
 export const RiderImporter = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
-  const { riders, setRiders, importRidersToDb } = useRaceStore();
+  const { riders, setRiders, importRidersToDb, deleteAllRiders } = useRaceStore();
+  const confirmDialog = useRef(null);
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export const RiderImporter = () => {
     const newRider = {
       id: crypto.randomUUID(),
       riderNumber: riderNumber,
-      caLicenceNumber: formData.get("caLicence"),
+      caLicenceNumber: formData.get("caLicence") || "TBA",
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       category: formData.get("category"),
@@ -42,6 +44,7 @@ export const RiderImporter = () => {
         .map((line) => line.trim())
         .filter(Boolean);
       const newRiders = [];
+      let skippedCount = 0;
 
       lines.forEach((line, index) => {
         // Auto-detect delimiter (Tab for copy-paste/TSV, Comma for standard CSV)
@@ -55,7 +58,7 @@ export const RiderImporter = () => {
         // New format: CA Licence No, Grade Entered, Race Grade, First Name, Surname, Race No
         if (parts.length >= 6) {
           const rider = {
-            caLicenceNumber: parts[0],
+            caLicenceNumber: parts[0] || "TBA",
             category: parts[1], // Grade Entered
             // parts[2] is Race Grade (e.g. "A")
             firstName: parts[3],
@@ -70,9 +73,15 @@ export const RiderImporter = () => {
 
           if (rider.riderNumber) {
             newRiders.push(rider);
+          } else {
+            skippedCount++;
           }
         }
       });
+
+      if (skippedCount > 0) {
+        toast.error(`⚠️ Skipped ${skippedCount} riders missing a Rider Number!`);
+      }
 
       setRiders(newRiders);
       importRidersToDb(newRiders);
@@ -161,7 +170,7 @@ export const RiderImporter = () => {
               toast.success("File import successful");
             }}
           />
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
             <label
               htmlFor="fileInput"
               className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold cursor-pointer"
@@ -173,6 +182,18 @@ export const RiderImporter = () => {
               className="px-4 py-2 bg-slate-600 text-white rounded-lg text-sm font-bold"
             >
               Load Demo Data
+            </button>
+            <button
+              onClick={() => {
+                confirmDialog.current.open({
+                  title: "Delete All Riders",
+                  message: "Are you sure you want to DELETE ALL riders from this track? This cannot be undone.",
+                  onConfirm: () => deleteAllRiders()
+                });
+              }}
+              className="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+            >
+              <Trash2 size={16} /> Delete All
             </button>
           </div>
         </div>
@@ -187,7 +208,6 @@ export const RiderImporter = () => {
             <input
               name="caLicence"
               type="text"
-              required
               className="mt-1 block w-full border rounded-lg px-3 py-2"
               placeholder="AC..."
             />
@@ -257,6 +277,7 @@ export const RiderImporter = () => {
           </div>
         </form>
       )}
+      <ConfirmDialog ref={confirmDialog} />
     </Card>
   );
 }

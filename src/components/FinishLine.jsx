@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import toast from "react-hot-toast";
 import {
   List,
@@ -16,6 +16,7 @@ import { useRiderLists } from "../hooks/useRiderLists";
 import { getTime, getTimeMs } from "../utils/utils.js";
 
 import { getRiderOnTrack } from "../utils/utils"; // adjust imports
+import ConfirmDialog from "./ConfirmDialog";
 
 const FinishLine = () => {
   const {
@@ -33,6 +34,7 @@ const FinishLine = () => {
 
   const [pendingFinishes, setPendingFinishes] = useState([]);
   const { ridersOnTrack, finishedRiders } = useRiderLists();
+  const confirmDialog = useRef(null);
   const handleCapture = () => {    
     setPendingFinishes((prev) => [
       ...prev,
@@ -265,7 +267,13 @@ const FinishLine = () => {
                   )}
                 </button>
                 <button 
-                  onClick={() => updateRiderStatus(rider.id, 'DNF')}
+                  onClick={() => {
+                    confirmDialog.current.open({
+                      title: "Confirm DNF",
+                      message: `Are you sure you want to mark rider #${rider.riderNumber} as DNF?`,
+                      onConfirm: () => updateRiderStatus(rider.id, 'DNF')
+                    });
+                  }}
                   className="bg-red-500 text-white px-3 py-1 rounded text-xs"
                 >
                   DNF
@@ -327,6 +335,7 @@ const FinishLine = () => {
           ))}
         </div>
       </div>
+      <ConfirmDialog ref={confirmDialog} />
     </div>
   );
 };

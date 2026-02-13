@@ -23,7 +23,7 @@ import {
   browserLocalPersistence,
 } from "firebase/auth";
 
-import { db, appId, auth } from "../modules/firebase";
+import { db, appId,  auth } from "../modules/firebase";
 
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
 
@@ -163,6 +163,25 @@ addRider: async (riderData) => {
     } catch (error) {
       console.error("Error deleting rider:", error);
       toast.error("Failed to delete rider");
+    }
+  },
+  deleteAllRiders: async () => {
+    const { activeRaceId } = get();
+    if (!activeRaceId) return;
+
+    try {
+      const ridersRef = collection(db, "riders");
+      const q = query(ridersRef, where("raceId", "==", activeRaceId));
+      const snapshot = await getDocs(q);
+      
+      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      set({ riders: [] });
+      toast.success("All riders deleted for this session");
+    } catch (error) {
+      console.error("Error deleting all riders:", error);
+      toast.error("Failed to delete riders");
     }
   },
   initAuth: async () => {
@@ -326,29 +345,57 @@ addRider: async (riderData) => {
     handleStart(raceId, soloNumber);
   },
 
-updateRiderStatus: async (riderId, newStatus) => {
-  try {
-    const { doc, updateDoc } = await import("firebase/firestore");
-    const riderRef = doc(db, "riders", riderId);
+  updateRiderStatus: async (riderInput, newStatus) => {
+    const { riders, activeRaceId } = get();
+    
+    // 1. Resolve the correct Firestore Document ID
+    let riderId = riderInput;
+    
+    // If input is just a number (e.g. "105"), try to find the rider object
+    const foundRider = riders.find(r => r.id === riderInput) || 
+                       riders.find(r => r.riderNumber === riderInput && r.raceId === activeRaceId);
+    
+    if (foundRider) {
+      riderId = foundRider.id;
+    } else if (activeRaceId && !String(riderInput).includes("_")) {
+      // Fallback: Construct composite ID if we can't find it in local state
+      riderId = `${activeRaceId}_${riderInput}`;
+    }
 
-    // Update Firestore
-    await updateDoc(riderRef, { 
-      status: newStatus,
-      // If DNF, we keep the startTimeMs for records but clear potential duration
-      durationMs: null, 
-      raceTime: newStatus // Set raceTime string to "DNF" or "DNS" for the CSV
-    });
+    try {
+      const riderRef = doc(db, "riders", riderId);
 
-    // Update Local State
-    set((state) => ({
-      riders: state.riders.map((r) =>
-        r.id === riderId ? { ...r, status: newStatus, raceTime: newStatus } : r
-      ),
-    }));
-  } catch (error) {
-    console.error(`Failed to update rider to ${newStatus}:`, error);
-  }
-},
+      const updates = { 
+        status: newStatus,
+        durationMs: null, 
+        raceTime: newStatus 
+      };
+
+      // If DNS, ensure we clear any existing timing data
+      if (newStatus === "DNS") {
+        updates.startTime = null;
+        updates.startTimeMs = null;
+        updates.finishTime = null;
+        updates.finishTimeMs = null;
+      }
+
+      // Update Firestore
+      await updateDoc(riderRef, updates);
+
+      // Update Local State
+      set((state) => ({
+        riders: state.riders.map((r) =>
+          r.id === riderId ? { ...r, ...updates } : r
+        ),
+        riderNumber: "" // Clear the input field
+      }));
+      
+      toast.success(`Rider marked as ${newStatus}`);
+    } catch (error) {
+      console.error(`Failed to update rider to ${newStatus}:`, error);
+      toast.error("Failed to update status. Check rider number.");
+    }
+  },
  // Finish state
  handleFinish: async (rider) => {
     if (!rider) return;
@@ -517,7 +564,7 @@ cloneRidersFromTrack: async (sourceTrackName) => {
 
   // 3. Map to new objects (stripping timing data) and save
   const clonePromises = ridersToClone.map(rider => {
-    const { id, startTime, startTimeMs, finishTime, finishTimeMs, durationMs, raceTime, ...cleanData } = rider;
+    const { ...cleanData } = rider;
     return addRider({
       ...cleanData,
       trackName: trackName, // Assign to current track
@@ -596,6 +643,57 @@ fetchEventResults: async (eventName) => {
   } catch (error) {
     console.error("Error fetching event results:", error);
     return [];
+  }
+},
+renameTrack: async (newTrackName) => {
+  const { eventName, trackName, activeRaceId, riders } = get();
+  if (!trackName || trackName === "NO TRACK") return;
+
+  const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
+  const formattedNewTrack = newTrackName.replace(/\s+/g, '-').toUpperCase();
+  const newActiveRaceId = `${formattedEvent}_${formattedNewTrack}`;
+
+  // Filter riders for current track (using local state which should be synced)
+  const currentRiders = riders.filter(r => r.raceId === activeRaceId);
+
+  if (currentRiders.length === 0) {
+      set({ 
+          trackName: newTrackName,
+          activeRaceId: newActiveRaceId
+      });
+      toast.success(`Track renamed to ${newTrackName}`);
+      return;
+  }
+
+  try {
+      const promises = currentRiders.map(async (rider) => {
+          const oldDocRef = doc(db, "riders", rider.id);
+          const newDocId = `${newActiveRaceId}_${rider.riderNumber}`;
+          const newDocRef = doc(db, "riders", newDocId);
+
+          const { id, ...riderData } = rider;
+          const newData = {
+              ...riderData,
+              trackName: newTrackName,
+              raceId: newActiveRaceId,
+          };
+
+          await setDoc(newDocRef, newData);
+          await deleteDoc(oldDocRef);
+      });
+
+      await Promise.all(promises);
+
+      set({
+          trackName: newTrackName,
+          activeRaceId: newActiveRaceId,
+          riders: [] // Clear riders to force a refresh or let subscription handle it
+      });
+      
+      toast.success(`Track renamed to ${newTrackName}`);
+  } catch (error) {
+      console.error("Error renaming track:", error);
+      toast.error("Failed to rename track");
   }
 },
 

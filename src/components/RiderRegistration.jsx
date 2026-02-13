@@ -7,7 +7,7 @@ import { Copy, Users, ChevronRight, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export const RiderRegistration = () => {
-  const { riders, eventName, trackName, cloneRidersFromTrack, fetchEventResults } = useRaceStore();
+  const { eventName, trackName, cloneRidersFromTrack, fetchEventResults } = useRaceStore();
   const [isCopying, setIsCopying] = useState(false);
   const [otherTracks, setOtherTracks] = useState([]);
 
@@ -72,23 +72,22 @@ return (
             </div>
           </div>
         )}
-
-        {/* Option 2: New Import (Your existing CSV logic) */}
+        
         <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center">
-          <h3 className="text-sm font-bold text-slate-700 mb-2">Manual Import</h3>
-          <p className="text-xs text-slate-400 mb-4">Upload a new CSV for this track only</p>
-          <RiderImporter /> {/* Your existing component */}
+          <RiderImporter />
         </div>
       </div>
 
       {/* Safety Notice */}
+      {otherTracks.length > 0 && (
       <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg text-amber-800 text-xs">
         <AlertCircle size={16} className="shrink-0" />
         <p>
           Cloning riders copies their Name, Bib, and Category to <strong>{trackName}</strong>. 
           Timing data from the source track will not be affected.
         </p>
-      </div>
+      </div>    
+      )}
     </div>
   );
 };

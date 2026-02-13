@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Play, RefreshCw, RotateCcw, CheckCircle, ArrowUp } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { formatTime } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
 import SessionPicker from "./SessionPicker";
 import { CategoryFilter } from "./starter/CategoryFilter";
+import ConfirmDialog from "./ConfirmDialog";
 
 const StarterComponent = () => {
   const {
@@ -38,6 +39,7 @@ const StarterComponent = () => {
   };
   // Local filter for "WAITING" riders  
   const { waitingRiders } = useRiderLists();
+  const confirmDialog = useRef(null);
 
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
@@ -89,8 +91,16 @@ const StarterComponent = () => {
             {loading ? <RefreshCw className="animate-spin" /> : "START RIDER"}
           </button>
           <button 
-            onClick={() => updateRiderStatus(riderNumber, 'DNS')}
-            className="bg-slate-400 text-white px-3 py-1 rounded text-xs"
+            type="button"
+            disabled={!riderNumber}
+            onClick={() => {
+              confirmDialog.current.open({
+                title: "Mark DNS",
+                message: `Are you sure you want to mark rider #${riderNumber} as DNS?`,
+                onConfirm: () => updateRiderStatus(riderNumber, 'DNS')
+              });
+            }}
+            className="bg-slate-400 text-white px-3 py-1 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             DNS
           </button>          
@@ -111,9 +121,11 @@ const StarterComponent = () => {
             {rider.status !== "WAITING" && (
               <button 
                 onClick={() => {
-                  if(window.confirm(`Reset ${rider.firstName} to WAITING? All times will be lost.`)) {
-                    resetRider(rider.id);
-                  }
+                  confirmDialog.current.open({
+                    title: "Reset Rider",
+                    message: `Reset ${rider.firstName} to WAITING? All times will be lost.`,
+                    onConfirm: () => resetRider(rider.id)
+                  });
                 }}
                 className="p-2 text-slate-400 hover:text-orange-600 transition-colors"
                 title="Reset Rider"
@@ -176,6 +188,7 @@ const StarterComponent = () => {
           ))}
         </div>
       </div>
+      <ConfirmDialog ref={confirmDialog} />
     </div>
   );
 };

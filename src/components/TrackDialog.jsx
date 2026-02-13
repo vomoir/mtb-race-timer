@@ -27,7 +27,7 @@ const TrackDialog = forwardRef(function TrackDialog(
   return (
     <dialog
       ref={dialogRef}
-      className="rounded-lg p-6 shadow-xl backdrop:bg-black/40"      
+      className="rounded-lg p-6 shadow-xl backdrop:bg-black/40 m-auto w-[90%] max-w-md"      
     >
       <form method="dialog" onSubmit={handleSubmit} className="space-y-4">
         <h3 className="text-lg font-bold">{title}</h3>
