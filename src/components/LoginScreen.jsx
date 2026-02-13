@@ -84,9 +84,9 @@ return (
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
             <PlusCircle size={14} /> Start New Event
           </h2>
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2">
             <input 
-              className="flex-1 bg-slate-100 border-none rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+              className="flex-1 w-full bg-slate-100 border-none rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="e.g. Dungog Day 2"
               value={input}
               onChange={(e) => setInput(e.target.value)}

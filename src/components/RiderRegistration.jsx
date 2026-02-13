@@ -58,7 +58,7 @@ return (
                   key={other}
                   disabled={isCopying}
                   onClick={() => handleCopy(other)}
-                  className="w-full flex items-center justify-between bg-white p-3 rounded-lg border border-blue-200 hover:border-blue-500 hover:shadow-md transition-all group"
+                  className="w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 bg-white p-3 rounded-lg border border-blue-200 hover:border-blue-500 hover:shadow-md transition-all group"
                 >
                   <div className="flex items-center gap-3">
                     <Copy size={16} className="text-blue-400" />

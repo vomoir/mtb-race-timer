@@ -33,8 +33,8 @@ export const RaceClock = () => {
   }, [riders, activeRaceId]);
 
   return (
-    <div className="bg-slate-900 text-orange-500 font-mono text-3xl px-4 py-2 rounded-lg border-2 border-orange-500/30 shadow-[0_0_15px_rgba(255,69,0,0.2)] flex flex-col items-center">
-      <span className="text-[10px] uppercase tracking-widest text-slate-400">Race Time</span>
+    <div className="bg-slate-900 text-orange-500 font-mono text-xl sm:text-3xl px-3 py-1 sm:px-4 sm:py-2 rounded-lg border-2 border-orange-500/30 shadow-[0_0_15px_rgba(255,69,0,0.2)] flex flex-col items-center">
+      <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400">Race Time</span>
       {elapsed}
     </div>
   );

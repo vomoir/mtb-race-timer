@@ -34,7 +34,7 @@ const SwitchEventButton = () => {
           <Clock className="text-yellow-400" />
           MTB Timing Pro - {eventName || "No Event Selected"}
         </h1>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
           <RaceClock />
           <div className="flex items-center gap-3">
           <div
@@ -72,49 +72,49 @@ const SwitchEventButton = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex bg-slate-800 rounded-lg p-1 max-w-2xl mx-auto overflow-x-auto">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-800 rounded-lg p-1 max-w-2xl mx-auto">
         <button
           onClick={() => navigate("/registration")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all font-semibold whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/registration")
               ? "bg-green-600 text-white shadow-md"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <File size={18} /> Register
+          <File size={16} /> Register
         </button>
 
         <button
           onClick={() => navigate("/starter")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all font-semibold whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/starter")
               ? "bg-green-600 text-white shadow-md"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Play size={18} /> Starter
+          <Play size={16} /> Starter
         </button>
 
         <button
           onClick={() => navigate("/finish")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all font-semibold whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/finish")
               ? "bg-red-600 text-white shadow-md"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Flag size={18} /> Finisher
+          <Flag size={16} /> Finisher
         </button>
 
         <button
           onClick={() => navigate("/results")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-md transition-all font-semibold whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 py-2 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
             isActive("/results")
               ? "bg-blue-600 text-white shadow-md"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Trophy size={18} /> Resulter
+          <Trophy size={16} /> Resulter
         </button>
       </div>
     </div>

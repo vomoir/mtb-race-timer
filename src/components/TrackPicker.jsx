@@ -40,11 +40,11 @@ export const TrackPicker = () => {
   return (
     <div className="bg-slate-100 p-4 rounded-xl mb-6 border border-slate-200">
       <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Active Race Track</label>
-      <div className="flex gap-2">
+      <div className="flex flex-col md:flex-row gap-2">
         <select 
           value={trackName}
           onChange={(e) => setTrack(e.target.value)}
-          className="flex-1 p-2 rounded border border-slate-300 bg-white font-mono text-sm"
+          className="flex-1 w-full p-2 rounded border border-slate-300 bg-white font-mono text-sm"
         >
           <option value="">Select ↓ or Add new Track →</option>
           {existingTracks.map(t => <option key={t} value={t}>{t}</option>)}
@@ -53,7 +53,7 @@ export const TrackPicker = () => {
         {isLocked ? (
           <button
             onClick={() => openDialog('rename')}
-            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2"
+            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center justify-center gap-2"
             title="Track has riders. Rename instead of creating new."
           >
             <Pencil size={14} /> RENAME
