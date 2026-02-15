@@ -42,7 +42,7 @@ const LoginScreen = () => {
             }
           }
         }
-        navigate('/finish');
+        navigate('/registration');
       };
       initDeepLink();
     }
@@ -60,7 +60,8 @@ const LoginScreen = () => {
     const newHistory = [upperName, ...history.filter(h => h !== upperName)].slice(0, 5);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
     setEvent(upperName); 
-    syncEventRiders(upperName);   
+    syncEventRiders(upperName);
+    navigate('/registration');
   };
 
   const clearHistory = () => {

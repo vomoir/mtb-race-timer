@@ -18,7 +18,7 @@ export const TrackPicker = () => {
         setDbTracks(tracks);
 
         // Auto-select the most recent track if none is currently selected
-        if (trackName === "NO TRACK" && results.length > 0) {
+        if ((!trackName || trackName === "NO TRACK") && results.length > 0) {
           const latestRider = results.reduce((latest, current) => {
             const getT = (r) => {
               const t = r.timestamp || r.createdAt || r.startTime || 0;
