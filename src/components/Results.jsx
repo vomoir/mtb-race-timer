@@ -1,13 +1,12 @@
-import React from "react";
-import { Trophy, Download, FileText } from "lucide-react";
+import React, { useState } from "react";
+import { Trophy, Download, List } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { TableSkeleton } from '../components/LoadingStates';
 import { OverallResults } from "./OverallResults";
-// import { sortRidersByTime } from "../utils/raceResultsCalculations";
+import { Card } from "./Card";
 
-// --- HELPER UTILS ---
 const groupBy = (array, key) => array.reduce((acc, obj) => {
   const k = obj[key] || "Uncategorized";
   if (!acc[k]) acc[k] = [];
@@ -18,10 +17,9 @@ const groupBy = (array, key) => array.reduce((acc, obj) => {
 const formatMsToTime = (ms) => {
   if (!ms) return "00:00:00.00";
   const date = new Date(ms);
-  return date.toISOString().substr(11, 11); // Returns HH:MM:SS.ms
+  return date.toISOString().substr(11, 11);
 };
 
-// Generic download trigger
 const triggerFileDownload = (content, fileName) => {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -37,236 +35,170 @@ const triggerFileDownload = (content, fileName) => {
 const Results = () => {
   const { eventName, trackName, isLoading, riders, fetchEventResults } = useRaceStore();
   const { finishedRiders } = useRiderLists(riders);
+  const [activeTab, setActiveTab] = useState("track");
 
-  // 1. Export Current Track Results (Single View)
   const exportCurrentTrackCSV = () => {
-    // Filter for current track to ensure we don't mix data if store has multiple tracks
     const currentTrackFinishers = finishedRiders.filter(r => r.trackName === trackName);
-
     if (currentTrackFinishers.length === 0) return;
 
-    const headers = "Rank,Rider Number,Rider Name,AusCycle Number,Category,Race Time,Start Time,Finish Time,Status";
-    const raceDetails = `Track Name: ${trackName}\nRace Date: ${new Date().toLocaleDateString()}\n`;
-    
-    const rows = currentTrackFinishers.map((r, index) => {
-      return `${index + 1},${r.riderNumber},"${r.firstName} ${r.lastName}",${r.caLicenceNumber || ''},"${r.category}",${r.raceTime},${r.startTime},${r.finishTime},${r.status}`;
-    });
-
-    const csvContent = [raceDetails, headers, ...rows].join("\n");
-    triggerFileDownload(csvContent, `Results__${trackName}_${new Date().toISOString().split('T')[0]}.csv`);
+    const headers = "Rank,Rider Number,Rider Name,Category,Race Time,Start Time,Finish Time,Status";
+    const rows = currentTrackFinishers.map((r, index) => 
+      `${index + 1},${r.riderNumber},"${r.firstName} ${r.lastName}","${r.category}",${r.raceTime},${r.startTime},${r.finishTime},${r.status}`
+    );
+    const csvContent = [headers, ...rows].join("\n");
+    triggerFileDownload(csvContent, `Results_${trackName}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
-  // 2. Export Comprehensive Event Results (All Tracks + GC)
   const exportAllResultsCSV = async () => {
-    // Fetch all riders for the event from DB to ensure we have all tracks
     const eventRiders = await fetchEventResults(eventName);
-    
-    // Setup Meta Info
-    const today = new Date().toLocaleDateString("en-AU");
-    let csvContent = `EVENT,${eventName.toUpperCase()}\n`;
-    csvContent += `DATE,${today}\n`;
-    csvContent += `GENERATED,${new Date().toLocaleTimeString()}\n\n`;
-
-    // --- SECTION A: INDIVIDUAL TRACK RESULTS ---
+    let csvContent = `EVENT,${eventName.toUpperCase()}\nDATE,${new Date().toLocaleDateString("en-AU")}\n\n`;
     const tracks = [...new Set(eventRiders.map(r => r.trackName))].sort();
 
     tracks.forEach(track => {
-      csvContent += `TRACK: ${track.toUpperCase()}\n`;
-      csvContent += "Rank,Rider Number,Rider Name,Category,Race Time,Status\n";
-
-      const trackRiders = eventRiders.filter(r => r.trackName === track);
-      const grouped = groupBy(trackRiders, 'category');
-
+      csvContent += `TRACK: ${track.toUpperCase()}\nRank,Rider Number,Rider Name,Category,Race Time,Status\n`;
+      const grouped = groupBy(eventRiders.filter(r => r.trackName === track), 'category');
       Object.keys(grouped).sort().forEach(category => {
         csvContent += `--- CATEGORY: ${category} ---\n`;
-        
-        // Sort: Finished (fastest first) -> DNF -> DNS -> Waiting
         const sorted = grouped[category].sort((a, b) => {
            if (a.status === "FINISHED" && b.status === "FINISHED") return (a.durationMs || 0) - (b.durationMs || 0);
            if (a.status === "FINISHED") return -1;
            if (b.status === "FINISHED") return 1;
-           if (a.status === "DNF") return -1;
-           if (b.status === "DNF") return 1;
            return 0;
         });
-        
         sorted.forEach((r, idx) => {
           const rank = r.status === "FINISHED" ? idx + 1 : "-";
           csvContent += `${rank},"${r.riderNumber}","${r.firstName} ${r.lastName}","${category}",${r.raceTime || '--:--:--'},${r.status}\n`;
         });
       });
-      csvContent += "\n"; // Space between tracks
+      csvContent += "\n";
     });
 
-    // --- SECTION B: OVERALL STANDINGS (GC) ---
-    csvContent += `OVERALL EVENT STANDINGS (GC)\n`;
-    csvContent += "Rank,Rider Number,Rider Name,Category,Stages Completed,Total Time\n";
-
-    // Calculate totals per rider
+    csvContent += `OVERALL EVENT STANDINGS (GC)\nRank,Rider Number,Rider Name,Category,Stages Completed,Total Time\n`;
     const riderMap = {};
     eventRiders.forEach(r => {
-      // Only count finished stages for GC time
       if (r.status !== "FINISHED") return;
-
       const key = `${r.riderNumber}-${r.category}`;
-      if (!riderMap[key]) {
-        riderMap[key] = { 
-          riderNumber: r.riderNumber, 
-          name: `${r.firstName} ${r.lastName}`, 
-          category: r.category, 
-          totalMs: 0, 
-          count: 0 
-        };
-      }
+      if (!riderMap[key]) riderMap[key] = { riderNumber: r.riderNumber, name: `${r.firstName} ${r.lastName}`, category: r.category, totalMs: 0, count: 0 };
       riderMap[key].totalMs += r.durationMs;
       riderMap[key].count += 1;
     });
-
     const overallGrouped = groupBy(Object.values(riderMap), 'category');
-
     Object.keys(overallGrouped).sort().forEach(category => {
       csvContent += `--- OVERALL CATEGORY: ${category} ---\n`;
-      const sortedGC = overallGrouped[category].sort((a, b) => {
-        // Sort by most stages completed, then fastest time
-        if (b.count !== a.count) return b.count - a.count;
-        return a.totalMs - b.totalMs;
-      });
-      
+      const sortedGC = overallGrouped[category].sort((a, b) => (b.count !== a.count) ? b.count - a.count : a.totalMs - b.totalMs);
       sortedGC.forEach((r, idx) => {
         csvContent += `${idx + 1},"${r.riderNumber}","${r.name}","${r.category}",${r.count},${formatMsToTime(r.totalMs)}\n`;
       });
     });
-
-    triggerFileDownload(csvContent, `${eventName}_Full_Results.csv`);
+    triggerFileDownload(csvContent, `${eventName}_Full_Results_${new Date().toISOString().split('T')[0]}.csv`);
   };
+  
+  const TabButton = ({ tabName, label, icon: Icon }) => (
+    <button
+      onClick={() => setActiveTab(tabName)}
+      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-4 transition-colors ${
+        activeTab === tabName
+          ? 'text-yellow-600 border-yellow-600'
+          : 'text-slate-500 border-transparent hover:text-slate-800'
+      }`}
+    >
+      <Icon size={16} />
+      <span>{label}</span>
+    </button>
+  );
 
   return (
-    <div className="p-4 max-w-2xl mx-auto space-y-6">
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <div>
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <Trophy className="text-yellow-500" size={20} />
-            Race Results
-          </h2>
-          {isLoading ? (
-            <TableSkeleton rows={8} />
-          ) : finishedRiders.length === 0 ? (
-            <p className="text-gray-500">No finishers yet for this session.</p>
-          ) : (
-            <p className="text-xs text-slate-500">
-              {finishedRiders.length} riders finished
-            </p>
+    <div className="max-w-4xl mx-auto p-2 sm:p-4">
+      <Card className="overflow-hidden">
+        {/* --- Tabs --- */}
+        <div className="flex bg-slate-50 border-b border-slate-200">
+          <TabButton tabName="track" label="Track Results" icon={List} />
+          <TabButton tabName="overall" label="Overall Standings" icon={Trophy} />
+        </div>
+
+        {/* --- Tab Content --- */}
+        <div className="p-4 sm:p-6">
+          {activeTab === 'track' && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div>
+                   <h2 className="text-xl font-bold text-slate-800">
+                    {trackName}
+                  </h2>
+                   <p className="text-sm text-slate-500">{finishedRiders.length} finishers</p>
+                </div>
+                 <div className="flex gap-2">
+                   <button onClick={exportCurrentTrackCSV} disabled={finishedRiders.length === 0} className="flex-1 sm:flex-initial w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                     <Download size={16} /> Export Track
+                   </button>
+                   <button onClick={exportAllResultsCSV} className="flex-1 sm:flex-initial w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                     <Download size={16} /> Export All
+                   </button>
+                 </div>
+              </div>
+
+              {isLoading ? <TableSkeleton /> : (
+                <>
+                  {/* Mobile View: List of Cards */}
+                  <div className="sm:hidden space-y-3">
+                    {finishedRiders.map((rider, index) => (
+                       <div key={rider.id} className="bg-white p-3 rounded-lg border border-slate-200 flex items-center">
+                          <div className={`font-bold text-lg w-10 ${index === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>
+                            {index === 0 ? <Trophy size={20} className="fill-yellow-500"/> : index + 1}
+                          </div>
+                          <div className="flex-1">
+                             <p className="font-bold text-slate-800">#{rider.riderNumber} - {rider.firstName} {rider.lastName}</p>
+                             <p className="text-xs text-slate-500">{rider.category}</p>
+                          </div>
+                          <div className={`font-mono font-bold text-lg ${index === 0 ? 'text-green-600' : 'text-slate-700'}`}>
+                            {rider.raceTime}
+                          </div>
+                       </div>
+                    ))}
+                  </div>
+                  
+                  {/* Desktop View: Table */}
+                  <div className="hidden sm:block border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase font-bold">
+                        <tr>
+                          <th className="p-3 w-16">Rank</th>
+                          <th className="p-3">Rider</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3 text-right">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {finishedRiders.map((rider, index) => (
+                          <tr key={rider.id} className="hover:bg-slate-50">
+                            <td className="p-3 font-bold text-slate-400">
+                              {index === 0 ? <Trophy size={16} className="text-yellow-500 fill-yellow-500" /> : index + 1}
+                            </td>
+                            <td className="p-3">
+                              <p className="font-bold text-slate-800">#{rider.riderNumber} - {rider.firstName} {rider.lastName}</p>
+                            </td>
+                            <td className="p-3 text-xs text-slate-500">{rider.category}</td>
+                            <td className={`p-3 text-right font-mono font-bold ${index === 0 ? "text-green-600" : "text-slate-700"}`}>
+                              {rider.raceTime}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+               {finishedRiders.length === 0 && <p className="text-center py-12 text-slate-400">No finishers yet for this track.</p>}
+            </div>
+          )}
+
+          {activeTab === 'overall' && (
+            <div className="animate-in fade-in">
+              <OverallResults />
+            </div>
           )}
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={exportCurrentTrackCSV}
-            disabled={finishedRiders.length === 0}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-          >
-            <Download size={16} />
-            Export Current Track
-          </button>
-          <button 
-            onClick={exportAllResultsCSV}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm transition-colors"
-          >
-            <span>📥</span> Export Official Results
-          </button>
-        </div>
-      </div>
-      <div className="max-w-7xl mx-auto p-4 bg-slate-50 rounded-xl">
-        {/* 2. Detailed View for Selected Track */}
-        {trackName ? (
-          <section>
-            <div className="flex justify-between items-end">
-              <div>
-                <h2 className="text-3xl font-black italic text-slate-900 uppercase">
-                  {trackName} Results
-                </h2>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <div className="text-center py-20 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300">
-            <p className="text-slate-500 font-medium">Select a track above to view detailed results and rankings.</p>
-          </div>
-        )}
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {finishedRiders.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="mx-auto text-slate-300 mb-2" size={32} />
-            <p className="text-slate-400">No race results yet.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-5 border-b border-slate-200">
-                <tr>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase">
-                    Rank
-                  </th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase">
-                    Rider #
-                  </th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase">
-                    Rider Name
-                  </th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">
-                    Time
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {finishedRiders.map((rider, index) => {
-                  const isWinner = index === 0;
-                  return (
-                    <tr
-                      key={rider.id}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="p-4 font-bold text-slate-400 w-16">
-                        {isWinner ? (
-                          <Trophy
-                            size={16}
-                            className="text-yellow-500 fill-yellow-500"
-                          />
-                        ) : (
-                          index + 1
-                        )}
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-slate-800 text-lg">
-                          #{rider.riderNumber}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-slate-800 text-lg">
-                          {rider.firstName} {rider.lastName}
-                        </div>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div
-                          className={`font-mono font-bold text-lg ${
-                            isWinner ? "text-green-600" : "text-slate-700"
-                          }`}
-                        >
-                          {rider.raceTime}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            
-          </div>    
-        )}
-      </div>
-      <div>
-        <OverallResults />
-      </div>
+      </Card>
     </div>
   );
 };
