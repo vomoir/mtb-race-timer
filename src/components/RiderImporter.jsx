@@ -1,21 +1,31 @@
-import { useState } from "react";
-import { Users } from "lucide-react";
+import { useState, useRef } from "react";
+import { Users, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { Card } from "./Card";
+import { demoRiders } from "../utils/demoData";
+import ConfirmDialog from "./ConfirmDialog";
 
-export default function RiderRegistration() {
+export const RiderImporter = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
-  const { setRiders, importRidersToDb } = useRaceStore();
+  const { riders, setRiders, importRidersToDb, deleteAllRiders } = useRaceStore();
+  const confirmDialog = useRef(null);
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const riderNumber = formData.get("riderNumber").trim();
+
+    if (riders.some((r) => r.riderNumber === riderNumber)) {
+      toast.error(`Rider #${riderNumber} is already registered!`);
+      return;
+    }
+
     const newRider = {
-      id: crypto.randomUUID(),
-      riderNumber: formData.get("riderNumber"),
-      caLicenceNumber: formData.get("caLicence"),
+      id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+      riderNumber: riderNumber,
+      caLicenceNumber: formData.get("caLicence") || "TBA",
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       category: formData.get("category"),
@@ -34,94 +44,60 @@ export default function RiderRegistration() {
         .map((line) => line.trim())
         .filter(Boolean);
       const newRiders = [];
+      let skippedCount = 0;
 
       lines.forEach((line, index) => {
-        const parts = line.split(",").map((p) => p.trim());
+        // Auto-detect delimiter (Tab for copy-paste/TSV, Comma for standard CSV)
+        const delimiter = line.includes("\t") ? "\t" : ",";
+        const parts = line.split(delimiter).map((p) => p.trim());
 
         // Skip header row
         if (index === 0) return;
 
         // Ensure we have enough columns
-        if (parts.length >= 7) {
+        // New format: CA Licence No, Grade Entered, Race Grade, First Name, Surname, Race No
+        if (parts.length >= 6) {
           const rider = {
-            riderNumber: parts[1], // Race No
-            caLicenceNumber: parts[2], // CA Licence Number
-            category: parts[3], // Grade Entered
-            firstName: parts[5], // First Name
-            lastName: parts[6], // Surname
+            caLicenceNumber: parts[0] || "TBA",
+            category: parts[1], // Grade Entered
+            // parts[2] is Race Grade (e.g. "A")
+            firstName: parts[3],
+            lastName: parts[4],
+            riderNumber: parts[5], // Race No
             status: "WAITING", // Initial state
             startTime: null,
             finishTime: null,
             raceTime: null,
-            timestamp: new Date().toISOString(), // or serverTimestamp() in Firestore
+            timestamp: new Date().toISOString(),
           };
 
-          newRiders.push(rider);
+          if (rider.riderNumber) {
+            newRiders.push(rider);
+          } else {
+            skippedCount++;
+          }
         }
       });
 
+      if (skippedCount > 0) {
+        toast.error(`⚠️ Skipped ${skippedCount} riders missing a Rider Number!`);
+      }
+
       setRiders(newRiders);
       importRidersToDb(newRiders);
+      toast.success(`Imported ${newRiders.length} riders successfully`);
     };
     reader.readAsText(file);
   };
   const loadDemoData = () => {
-    const demoRiders = [
-      {
-        riderNumber: "101",
-        firstName: "Sam",
-        lastName: "Hill",
-        caLicenceNumber: "A011249",
-        category: "Elite",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-      {
-        riderNumber: "102",
-        name: "Greg Minnaar",
-        firstName: "Greg",
-        lastName: "Minaar",
-        caLicenceNumber: "Ac615589",
-        category: "Elite",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-      {
-        riderNumber: "103",
-        firstName: "Rachel",
-        lastName: "Atherton",
-        caLicenceNumber: "Ac912589",
-        category: "Elite",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-      {
-        riderNumber: "201",
-        firstName: "Clem",
-        lastName: "Fandango",
-        caLicenceNumber: "Ac917589",
-        category: "Junior",
-        status: "WAITING",
-        startTime: null,
-        finishTime: null,
-        totalTime: null,
-      },
-    ];
     setRiders(demoRiders);
     importRidersToDb(demoRiders);
     toast.success("Demo data loaded!");
   };
 
   return (
-    <Card className="p-8 space-y-8 max-w-2xl mx-auto mt-10">
-      {/* Header */}
-      <div className="text-center space-y-4">
+    <Card className="p-4 sm:p-8 space-y-4 sm:space-y-8 max-w-2xl mx-auto">      
+      <div>
         <div className="mx-auto bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center text-slate-500">
           <Users size={32} />
         </div>
@@ -180,21 +156,21 @@ export default function RiderRegistration() {
             Drag & drop CSV file here
           </p>
           <p className="text-xs text-slate-400 mb-4">
-            Format: Number, Name, Category
+            Format: CA Licence, Category, Grade, First Name, Surname, Number
           </p>
 
           {/* Mobile-friendly file picker */}
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,text/csv,application/vnd.ms-excel,text/plain"
             className="hidden"
             id="fileInput"
+            onClick={(e) => (e.target.value = null)}
             onChange={(e) => {
               if (e.target.files[0]) handleFiles(e.target.files[0]);
-              toast.success("File import successful");
             }}
           />
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
             <label
               htmlFor="fileInput"
               className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold cursor-pointer"
@@ -207,45 +183,24 @@ export default function RiderRegistration() {
             >
               Load Demo Data
             </button>
+            <button
+              onClick={() => {
+                confirmDialog.current.open({
+                  title: "Delete All Riders",
+                  message: "Are you sure you want to DELETE ALL riders from this track? This cannot be undone.",
+                  onConfirm: () => deleteAllRiders()
+                });
+              }}
+              className="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+            >
+              <Trash2 size={16} /> Delete All
+            </button>
           </div>
         </div>
       )}
-
+{/* TODO: break this out into its own component */}
       {activeTab === "manual" && (
         <form onSubmit={handleManualSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Rider Number
-            </label>
-            <input
-              name="riderNumber"
-              type="text"
-              required
-              className="mt-1 block w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              First Name
-            </label>
-            <input
-              name="firstName"
-              type="text"
-              required
-              className="mt-1 block w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Last Name
-            </label>
-            <input
-              name="lastName"
-              type="text"
-              required
-              className="mt-1 block w-full border rounded-lg px-3 py-2"
-            />
-          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
               CA Licence Number
@@ -253,47 +208,76 @@ export default function RiderRegistration() {
             <input
               name="caLicence"
               type="text"
-              required
               className="mt-1 block w-full border rounded-lg px-3 py-2"
+              placeholder="AC..."
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Category
+              Grade / Category
             </label>
             <input
               name="category"
               type="text"
               required
               className="mt-1 block w-full border rounded-lg px-3 py-2"
+              placeholder="e.g. B Grade Men"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-bold"
-          >
-            Add Rider
-          </button>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                First Name
+              </label>
+              <input
+                name="firstName"
+                type="text"
+                required
+                className="mt-1 block w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Surname
+              </label>
+              <input
+                name="lastName"
+                type="text"
+                required
+                className="mt-1 block w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Race Number
+            </label>
+            <input
+              name="riderNumber"
+              type="text"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              required
+              className="mt-1 block w-full border rounded-lg px-3 py-2"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="reset"
+              className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-bold hover:bg-slate-300 transition-colors"
+            >
+              Clear Form
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            >
+              Add Rider
+            </button>
+          </div>
         </form>
       )}
-      {/* Summary List */}
-      {/* <div className="mt-6">
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">Registered Riders</h3>
-        {riders.length === 0 ? (
-          <p className="text-slate-400 text-sm">No riders registered yet.</p>
-        ) : (
-          <ul className="divide-y divide-slate-200">
-            {riders.map((r) => (
-              <li key={r.id} className="py-2 flex justify-between text-sm">
-                <span className="font-medium text-slate-800">
-                  #{r.number} — {r.name}
-                </span>
-                <span className="text-slate-500">{r.category}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div> */}
+      <ConfirmDialog ref={confirmDialog} />
     </Card>
   );
 }
