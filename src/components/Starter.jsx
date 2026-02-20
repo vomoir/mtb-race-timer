@@ -6,6 +6,7 @@ import { useRiderLists } from "../hooks/useRiderLists";
 import { CategoryFilter } from "./starter/CategoryFilter";
 import ConfirmDialog from "./ConfirmDialog";
 import { Card } from "./Card";
+import { TabButton } from "./TabButton";
 
 const StarterComponent = () => {
   const {
@@ -16,7 +17,7 @@ const StarterComponent = () => {
     setRiderNumber,
     handleStart,
     updateRiderStatus,
-    categoryFilter
+    categoryFilter,
   } = useRaceStore();
 
   const [activeTab, setActiveTab] = useState("start");
@@ -24,11 +25,11 @@ const StarterComponent = () => {
 
   const { waitingRiders } = useRiderLists();
 
-  const filteredRiders = waitingRiders.filter(rider => {
+  const filteredRiders = waitingRiders.filter((rider) => {
     if (categoryFilter === "ALL") return true;
     return rider.category === categoryFilter;
   });
-  
+
   const confirmDialog = useRef(null);
 
   const onSubmit = (e) => {
@@ -40,43 +41,53 @@ const StarterComponent = () => {
   const selectRider = (riderNum) => {
     setRiderNumber(riderNum);
     setShouldAutoFocus(false);
-    setActiveTab('start'); // Switch back to the start tab
+    setActiveTab("start"); // Switch back to the start tab
   };
 
-  const TabButton = ({ tabName, label, icon: Icon, count }) => (
-    <button
-      onClick={() => {
-        setShouldAutoFocus(true);
-        setActiveTab(tabName);
-      }}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-4 transition-colors ${
-        activeTab === tabName
-          ? 'text-blue-600 border-blue-600'
-          : 'text-slate-500 border-transparent hover:text-slate-800'
-      }`}
-    >
-      <Icon size={16} />
-      <span>{label}</span>
-      {count !== undefined && <span className="text-xs bg-slate-200 text-slate-600 font-bold rounded-full px-2 py-0.5">{count}</span>}
-    </button>
-  );
+  const handleTabClick = (tabName) => {
+    setShouldAutoFocus(true);
+    setActiveTab(tabName);
+  };
 
   return (
     <div className="max-w-md mx-auto p-2 sm:p-4">
       <Card className="overflow-hidden">
         {/* --- Tabs --- */}
         <div className="flex bg-slate-50 border-b border-slate-200">
-          <TabButton tabName="start" label="Start" icon={Play} />
-          <TabButton tabName="waiting" label="Waiting" icon={Users} count={waitingRiders.length} />
-          <TabButton tabName="log" label="Log" icon={Clock} count={localLogs.length > 0 ? localLogs.length : undefined}/>
+          <TabButton
+            label="Start"
+            icon={Play}
+            onClick={() => handleTabClick("start")}
+            isActive={activeTab === "start"}
+            color="blue"
+          />
+          <TabButton
+            label="Waiting"
+            icon={Users}
+            count={waitingRiders.length}
+            onClick={() => handleTabClick("waiting")}
+            isActive={activeTab === "waiting"}
+            color="blue"
+          />
+          <TabButton
+            label="Log"
+            icon={Clock}
+            count={localLogs.length > 0 ? localLogs.length : undefined}
+            onClick={() => handleTabClick("log")}
+            isActive={activeTab === "log"}
+            color="blue"
+          />
         </div>
 
         {/* --- Tab Content --- */}
         <div className="p-4 sm:p-6">
-          {activeTab === 'start' && (
+          {activeTab === "start" && (
             <form onSubmit={onSubmit} className="space-y-4 animate-in fade-in">
               <div>
-                <label htmlFor="riderNumber" className="block text-sm font-medium text-slate-500 mb-1">
+                <label
+                  htmlFor="riderNumber"
+                  className="block text-sm font-medium text-slate-500 mb-1"
+                >
                   Rider Number
                 </label>
                 <input
@@ -92,17 +103,17 @@ const StarterComponent = () => {
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                 <button
+                <button
                   type="button"
                   disabled={!riderNumber || loading}
-                   onClick={() => {
+                  onClick={() => {
                     confirmDialog.current.open({
                       title: "Mark DNS",
                       message: `Are you sure you want to mark rider #${riderNumber} as DNS (Did Not Start)?`,
                       onConfirm: () => {
-                        updateRiderStatus(riderNumber, 'DNS');
+                        updateRiderStatus(riderNumber, "DNS");
                         setRiderNumber("");
-                      }
+                      },
                     });
                   }}
                   className="w-full bg-slate-400 hover:bg-slate-500 disabled:bg-slate-300 text-white text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center"
@@ -114,17 +125,18 @@ const StarterComponent = () => {
                   disabled={!riderNumber || loading}
                   className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white text-lg font-bold py-3 rounded-lg shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
                 >
-                  {loading ? <RefreshCw className="animate-spin" /> : 'START'}
+                  {loading ? <RefreshCw className="animate-spin" /> : "START"}
                 </button>
               </div>
             </form>
           )}
 
-          {activeTab === 'waiting' && (
+          {activeTab === "waiting" && (
             <div className="animate-in fade-in">
               <CategoryFilter />
               <p className="text-xs text-slate-400 mb-2">
-                Showing {filteredRiders.length} of {waitingRiders.length} waiting riders. Tap a rider to start.
+                Showing {filteredRiders.length} of {waitingRiders.length}{" "}
+                waiting riders. Tap a rider to start.
               </p>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {filteredRiders.map((rider) => (
@@ -141,7 +153,9 @@ const StarterComponent = () => {
                         <div className="font-bold text-slate-800">
                           {rider.firstName} {rider.lastName}
                         </div>
-                        <div className="text-xs text-slate-500">{rider.category}</div>
+                        <div className="text-xs text-slate-500">
+                          {rider.category}
+                        </div>
                       </div>
                     </div>
                     <div className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -153,7 +167,7 @@ const StarterComponent = () => {
             </div>
           )}
 
-          {activeTab === 'log' && (
+          {activeTab === "log" && (
             <div className="space-y-4 animate-in fade-in">
               {lastStarted && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
@@ -168,7 +182,7 @@ const StarterComponent = () => {
                   </div>
                 </div>
               )}
-               <div className="space-y-2">
+              <div className="space-y-2">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Local Backup Log
                 </h3>
@@ -178,10 +192,16 @@ const StarterComponent = () => {
                     className="flex justify-between text-sm text-slate-600 border-b border-slate-100 pb-1 last:border-0"
                   >
                     <span className="font-semibold">#{log.riderNumber}</span>
-                    <span className="font-mono text-xs">{formatTime(log.startTime)}</span>
+                    <span className="font-mono text-xs">
+                      {formatTime(log.startTime)}
+                    </span>
                   </div>
                 ))}
-                 {localLogs.length === 0 && <p className="text-xs text-slate-400">No starts recorded yet.</p>}
+                {localLogs.length === 0 && (
+                  <p className="text-xs text-slate-400">
+                    No starts recorded yet.
+                  </p>
+                )}
               </div>
             </div>
           )}
