@@ -12,7 +12,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
   {
     id: "demo-2",
@@ -27,7 +27,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
   {
     id: "demo-3",
@@ -42,7 +42,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
   {
     id: "demo-4",
@@ -57,7 +57,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
   {
     id: "demo-5",
@@ -72,7 +72,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"  
+    raceTime: ""  
   },
   {
     id: "demo-6",
@@ -87,7 +87,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
   {
     id: "demo-7",
@@ -102,7 +102,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
   {
     id: "demo-8",
@@ -117,7 +117,7 @@ export const demoRiders = [
     startTime: null,
     finishTime: null,
     durationMs: 0,
-    raceTime: "--:--:--"
+    raceTime: ""
   },
 
 ];
