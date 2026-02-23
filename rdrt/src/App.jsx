@@ -42,13 +42,13 @@ import {
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBBRlw9TPYBf9pmSSw25yW_VDYPFIY0vZo",
-  authDomain: "mtb-race-timer-a3453.firebaseapp.com",
-  projectId: "mtb-race-timer-a3453",
-  storageBucket: "mtb-race-timer-a3453.firebasestorage.app",
-  messagingSenderId: "612454539416",
-  appId: "1:612454539416:web:619cb0fe16cad484ad70ed",
-  measurementId: "G-FGWWBVV5JN",
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+  measurementId: "",
 };
 
 // Initialize Firebase
