@@ -54,13 +54,23 @@ const LoginScreen = () => {
       toast.error("Event name must be at least 3 characters long");
       return;
     }
-    const upperName = name.toUpperCase();
+    let eventName = name.toUpperCase();
+    const dateRegex = /\d{4}-\d{2}-\d{2}$/;
+
+    if (!dateRegex.test(eventName)) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const dateStamp = `${year}-${month}-${day}`;
+        eventName = `${eventName} ${dateStamp}`;
+    }
     
     // Update history list (prevent duplicates)
-    const newHistory = [upperName, ...history.filter(h => h !== upperName)].slice(0, 5);
+    const newHistory = [eventName, ...history.filter(h => h !== eventName)].slice(0, 5);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
-    setEvent(upperName); 
-    syncEventRiders(upperName);
+    setEvent(eventName); 
+    syncEventRiders(eventName);
     navigate('/registration');
   };
 
