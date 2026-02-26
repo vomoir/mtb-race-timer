@@ -35,6 +35,9 @@ const Header = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-base sm:text-lg font-bold truncate">
               {eventName || "No Event"}
+              {trackName && trackName !== "NO TRACK" && (
+                <span className="text-slate-400 font-medium"> / {trackName}</span>
+              )}
             </h1>
           </div>
           
