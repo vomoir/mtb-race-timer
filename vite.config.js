@@ -13,11 +13,11 @@ export default defineConfig({
         inline: [/@csstools/, /@asamuzakjp\/css-color/],
       },
     },
-    css: true, 
-    pool: 'threads',
+    css: false, 
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        singleThread: true,
+      forks: {
+        singleFork: true,
       },
     },
   },
