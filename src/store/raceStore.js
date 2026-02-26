@@ -43,6 +43,7 @@ export const useRaceStore = create((set, get) => ({
   
   // UI State
   loading: false,
+  isLoading: false, // Alias for legacy components
   activeTab: "import",
   isOnline: navigator.onLine,
   now: getTime(),
@@ -53,11 +54,14 @@ export const useRaceStore = create((set, get) => ({
   soloNumber: "",
   finishing: null,
   finishLogs: getLocalBackup("finishes"),
+  lastStarted: null,
+  localLogs: getLocalBackup("starts"),
 
   // --- ACTIONS: UI & Auth ---
-  setLoading: (val) => set({ loading: val }),
+  setLoading: (val) => set({ loading: val, isLoading: val }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setIsOnline: (status) => set({ isOnline: status }),
+  setActiveRaceId: (id) => set({ activeRaceId: id }),
   tick: () => set({ now: getTime() }),
   
   initAuth: async () => {
@@ -66,6 +70,12 @@ export const useRaceStore = create((set, get) => ({
       await signInAnonymously(auth).catch((e) => console.error("Auth failed", e));
     }
     return onAuthStateChanged(auth, (u) => {
+      set({ user: u, authLoading: false });
+    });
+  },
+
+  initAuthListener: () => {
+    onAuthStateChanged(auth, (u) => {
       set({ user: u, authLoading: false });
     });
   },
@@ -117,6 +127,11 @@ export const useRaceStore = create((set, get) => ({
     await get().fetchRidersForSession(); 
   },
 
+  setTrack: (track) => {
+    const { eventName } = get();
+    get().setSession(eventName, track);
+  },
+
   // --- ACTIONS: Rider Management ---
   setRiders: (riders) => set({ riders, loading: false }),
   setRiderNumber: (num) => set({ riderNumber: num || "" }),
@@ -149,17 +164,31 @@ export const useRaceStore = create((set, get) => ({
     }
   },
 
-  handleStart: async (riderNumber) => {
-    if (!riderNumber?.trim()) return;
-    const { riders, eventName, trackName, activeRaceId } = get();
-    const existingRider = riders.find((r) => r.riderNumber === riderNumber);
-    const docId = existingRider?.id || `${activeRaceId}_${riderNumber}`;
+  handleStart: async (arg1, arg2) => {
+    const { riders, eventName, trackName, activeRaceId, localLogs } = get();
+    
+    // Support (riderObject) OR (raceId, riderNumber) OR (riderNumber)
+    let rNum = "";
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      rNum = arg1.riderNumber;
+    } else if (arg2) {
+      rNum = arg2;
+    } else {
+      rNum = arg1;
+    }
+
+    if (!rNum?.trim()) return;
+    
+    const existingRider = riders.find((r) => r.riderNumber === rNum);
+    const docId = existingRider?.id || `${activeRaceId}_${rNum}`;
+    const nowIso = getTime();
+    const nowMs = Date.now();
     
     const startData = {
-      startTime: getTime(),
-      startTimeMs: Date.now(),
+      startTime: nowIso,
+      startTimeMs: nowMs,
       status: "ON_TRACK",
-      riderNumber,
+      riderNumber: rNum,
       raceId: activeRaceId,
       eventName,
       trackName,
@@ -167,13 +196,20 @@ export const useRaceStore = create((set, get) => ({
 
     try {
       await setDoc(doc(db, "riders", docId), startData, { merge: true });
+      
+      const newLog = { riderNumber: rNum, time: nowIso, timestamp: nowMs };
+      const updatedLogs = [newLog, ...localLogs].slice(0, 50);
+      saveToLocalBackup("starts", newLog);
+
       set((state) => ({
         riders: existingRider 
           ? state.riders.map((r) => r.id === docId ? { ...r, ...startData } : r)
           : [...state.riders, { id: docId, ...startData }],
-        riderNumber: ""
+        riderNumber: "",
+        lastStarted: newLog,
+        localLogs: updatedLogs
       }));
-      toast.success(`Rider #${riderNumber} Started!`);
+      toast.success(`Rider #${rNum} Started!`);
     } catch (err) {
       console.error("Start failed:", err);
       toast.error("Could not start rider.");
@@ -356,5 +392,62 @@ export const useRaceStore = create((set, get) => ({
     } catch (error) {
       toast.error("Rename failed");
     }
+  },
+
+  categoryFilter: "ALL",
+  setCategoryFilter: (category) => set({ categoryFilter: category }),
+
+  syncSessionRiders: async () => {
+    const { activeRaceId } = get();
+    if (!activeRaceId) return toast.error("No active session!");
+    get().setLoading(true);
+    try {
+      const q = query(collection(db, "riders"), where("raceId", "==", activeRaceId));
+      const snapshot = await getDocs(q);
+      set({ riders: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) });
+      get().setLoading(false);
+      toast.success("Synced from cloud");
+    } catch (error) {
+      get().setLoading(false);
+      toast.error("Sync failed");
+    }
+  },
+
+  syncEventRiders: async (eventName) => {
+    set({ riders: [] });
+    try {
+      const q = query(collection(db, "riders"), where("eventName", "==", eventName), where("status", "in", ["WAITING", "ON_TRACK"]));
+      const snapshot = await getDocs(q);
+      const loaded = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      set({ riders: loaded });
+      if (loaded.length > 0) toast.success(`Synced ${loaded.length} riders`);
+    } catch (error) {
+      toast.error("Sync failed");
+    }
+  },
+
+  fetchEventResults: async (eventName) => {
+    try {
+      const q = query(collection(db, "riders"), where("eventName", "==", eventName));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    } catch (error) {
+      console.error("Error fetching event results:", error);
+      return [];
+    }
+  },
+
+  cloneRidersFromTrack: async (sourceTrackName) => {
+    const { riders, eventName, trackName, addRider, fetchEventResults } = get();
+    const allRiders = await fetchEventResults(eventName);
+    const sourceRiders = allRiders.filter(r => r.trackName === sourceTrackName);
+    if (sourceRiders.length === 0) return { success: false, count: 0 };
+
+    const currentNumbers = new Set(riders.filter(r => r.trackName === trackName).map(r => r.riderNumber));
+    const toClone = sourceRiders.filter(r => !currentNumbers.has(r.riderNumber));
+
+    const promises = toClone.map(r => addRider({ ...r, trackName, status: "WAITING" }));
+    await Promise.all(promises);
+    return { success: true, count: toClone.length };
   }
 }));
