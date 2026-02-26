@@ -1,4 +1,4 @@
-// test/utils/generateRiders.js
+// src/tests/utils/generateRiders.js
 export const generateLargeRiderSet = (count = 500, event = "Stress Test", track = "NO TRACK") => {
   return Array.from({ length: count }, (_, i) => ({
     id: `stress-rider-${i}`,

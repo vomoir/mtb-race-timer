@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useRaceStore } from '../store/raceStore';
 import { useRiderLists } from '../hooks/useRiderLists';
-import { generateLargeRiderSet } from '../test/utils/generateRiders';
+import { generateLargeRiderSet } from './utils/generateRiders';
 
 describe('Rider Store Stress Testing', () => {
   

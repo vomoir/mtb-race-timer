@@ -6,21 +6,15 @@ export default defineConfig({
   test: {
     environment: 'jsdom', // This "fakes" the browser environment
     globals: true,
-    setupFiles: './src/test/setup.js', // This file will run before each test suite
+    setupFiles: './src/tests/setup.js', // This file will run before each test suite
     include: ['src/tests/**/*.{test,spec}.{js,ts,jsx,tsx}'],
     server: {
       deps: {
-        inline: [/@csstools/],
+        inline: [/@csstools/, /@asamuzakjp\/css-color/],
       },
     },
-    css: true, // Or set to false to ignore CSS entirely
-    deps: {
-      optimizer: {
-        web: {
-          include: ['@csstools/css-calc']
-        }
-      }
-    },
+    css: true, 
+    pool: 'threads',
     poolOptions: {
       threads: {
         singleThread: true,
