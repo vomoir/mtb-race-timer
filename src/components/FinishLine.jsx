@@ -7,6 +7,7 @@ import { useRiderLists } from "../hooks/useRiderLists";
 import { getTime, getTimeMs, getRiderOnTrack } from "../utils/utils.js";
 import ConfirmDialog from "./ConfirmDialog";
 import TrackDialog from "./TrackDialog";
+import { TabButton } from "./starter/TabButton";
 
 const FinishLine = () => {
   const {
@@ -66,21 +67,6 @@ const FinishLine = () => {
     }
     setActiveId(null);
   };
-
-  const TabButton = ({ tabName, label, icon: Icon, count }) => (
-    <button
-      onClick={() => setActiveTab(tabName)}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-4 transition-colors ${
-        activeTab === tabName
-          ? 'text-red-600 border-red-600'
-          : 'text-slate-500 border-transparent hover:text-slate-800'
-      }`}
-    >
-      <Icon size={16} />
-      <span>{label}</span>
-      {count !== undefined && <span className="text-xs bg-slate-200 text-slate-600 font-bold rounded-full px-2 py-0.5">{count}</span>}
-    </button>
-  );
 
   return (
     <div className="max-w-md mx-auto p-2 sm:p-4">

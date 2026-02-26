@@ -275,7 +275,11 @@ addRider: async (riderData) => {
     set({ riders: [], unsubscribeRiders: null });
   },
 
-  setRiderNumber: (num) => {
+  setRiderNumber: (num) => {    
+    if(num === undefined) {
+      set({ riderNumber: "" });
+      return;
+    } 
     console.log("Setting riderNumber to:", num);
     set({ riderNumber: num });
   },

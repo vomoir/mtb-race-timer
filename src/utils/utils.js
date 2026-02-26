@@ -79,6 +79,11 @@ export function getRiderOnTrack(ridersOnTrack, riderNumber) {
   return ridersOnTrack.find((r) => r.riderNumber === riderNumber);
 }
 
+export function getRiderWaiting(waitingRiders, riderNumber) {
+  if (!Array.isArray(waitingRiders)) return null;
+  return waitingRiders.find((r) => r.riderNumber === riderNumber);
+}
+
 export const getTime = () => {
   const now = new Date();
   const nowIso = now.toLocaleTimeString("en-US", { hour12: false });
