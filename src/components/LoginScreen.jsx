@@ -12,7 +12,7 @@ const LoginScreen = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const { setEvent, setTrack, syncEventRiders, fetchEventResults } = useRaceStore();
+  const { createEventWithTracks, setTrack, syncEventRiders, fetchEventResults } = useRaceStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -23,7 +23,7 @@ const LoginScreen = () => {
     if (eventNameFromUrl) {
       const initDeepLink = async () => {
         const upperEventName = eventNameFromUrl.toUpperCase();
-        setEvent(upperEventName);
+        await createEventWithTracks(upperEventName);
         syncEventRiders(upperEventName);
 
         if (trackNameFromUrl) {
@@ -46,7 +46,7 @@ const LoginScreen = () => {
       };
       initDeepLink();
     }
-  }, [searchParams, navigate, setEvent, setTrack, syncEventRiders, fetchEventResults]);
+  }, [searchParams, navigate, createEventWithTracks, setTrack, syncEventRiders, fetchEventResults]);
 
   const handleStart = (name) => {
     if (!name) return;
@@ -69,7 +69,7 @@ const LoginScreen = () => {
     // Update history list (prevent duplicates)
     const newHistory = [eventName, ...history.filter(h => h !== eventName)].slice(0, 5);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
-    setEvent(eventName); 
+    createEventWithTracks(eventName); 
     syncEventRiders(eventName);
     navigate('/registration');
   };

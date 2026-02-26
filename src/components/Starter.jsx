@@ -3,9 +3,11 @@ import { Play, RefreshCw, Users, Clock, CheckCircle } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { formatTime } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
+import { getRiderWaiting } from "../utils/utils.js";
 import { CategoryFilter } from "./starter/CategoryFilter";
 import ConfirmDialog from "./ConfirmDialog";
 import { Card } from "./Card";
+import { TabButton } from "./starter/TabButton";
 
 const StarterComponent = () => {
   const {
@@ -31,9 +33,25 @@ const StarterComponent = () => {
   
   const confirmDialog = useRef(null);
 
+  const handleStartRider = () => {
+    handleStart(null, riderNumber);
+    setRiderNumber("");
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
-    handleStart(null, riderNumber);
+    //  See if rider is in waiting list
+    const waitingRider = getRiderWaiting(waitingRiders, riderNumber);
+    if (waitingRider) {
+      handleStart(waitingRider);            
+    } else {
+      // If not in waiting list, show confirmation to start anyway
+      confirmDialog.current.open({
+        title: "Rider Unlisted",
+        message: `Are you sure you want to start rider #${riderNumber}?`,
+        onConfirm: () => handleStartRider(),
+      });
+    }
     setRiderNumber("");
   };
 
@@ -43,32 +61,14 @@ const StarterComponent = () => {
     setActiveTab('start'); // Switch back to the start tab
   };
 
-  const TabButton = ({ tabName, label, icon: Icon, count }) => (
-    <button
-      onClick={() => {
-        setShouldAutoFocus(true);
-        setActiveTab(tabName);
-      }}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-4 transition-colors ${
-        activeTab === tabName
-          ? 'text-blue-600 border-blue-600'
-          : 'text-slate-500 border-transparent hover:text-slate-800'
-      }`}
-    >
-      <Icon size={16} />
-      <span>{label}</span>
-      {count !== undefined && <span className="text-xs bg-slate-200 text-slate-600 font-bold rounded-full px-2 py-0.5">{count}</span>}
-    </button>
-  );
-
   return (
     <div className="max-w-md mx-auto p-2 sm:p-4">
       <Card className="overflow-hidden">
         {/* --- Tabs --- */}
         <div className="flex bg-slate-50 border-b border-slate-200">
-          <TabButton tabName="start" label="Start" icon={Play} />
-          <TabButton tabName="waiting" label="Waiting" icon={Users} count={waitingRiders.length} />
-          <TabButton tabName="log" label="Log" icon={Clock} count={localLogs.length > 0 ? localLogs.length : undefined}/>
+          <TabButton tabName="start" label="Start" icon={Play} activeTab={activeTab} setActiveTab={setActiveTab} setShouldAutoFocus={setShouldAutoFocus} />
+          <TabButton tabName="waiting" label="Waiting" icon={Users} count={waitingRiders.length} activeTab={activeTab} setActiveTab={setActiveTab} setShouldAutoFocus={setShouldAutoFocus} />
+          <TabButton tabName="log" label="Log" icon={Clock} count={localLogs.length > 0 ? localLogs.length : undefined} activeTab={activeTab} setActiveTab={setActiveTab} setShouldAutoFocus={setShouldAutoFocus} />
         </div>
 
         {/* --- Tab Content --- */}

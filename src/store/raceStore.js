@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   query,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -27,9 +28,39 @@ import { db, appId,  auth } from "../modules/firebase";
 
 import { getLocalBackup, saveToLocalBackup } from "../utils/utils.js";
 
+const DEFAULT_TRACK_COUNT = 6;
+
 export const useRaceStore = create((set, get) => ({
   eventName:  "",
   trackName: "NO TRACK",
+  tracks: [],
+  setTracks: (tracks) => set({ tracks }),
+  
+  createEventWithTracks: async (eventName) => {
+    localStorage.setItem('eventName', eventName);
+    set({ eventName, riders: [], trackName: "NO TRACK", tracks: [] });
+
+    const tracksCollectionRef = collection(db, "tracks");
+    const q = query(tracksCollectionRef, where("eventName", "==", eventName));
+    const existingTracksSnapshot = await getDocs(q);
+
+    if (existingTracksSnapshot.empty) {
+      const batch = writeBatch(db);
+      const newTracks = [];
+      for (let i = 1; i <= DEFAULT_TRACK_COUNT; i++) {
+        const trackName = `TRACK${i}`;
+        const trackDocRef = doc(tracksCollectionRef);
+        batch.set(trackDocRef, { eventName, trackName, createdAt: serverTimestamp() });
+        newTracks.push(trackName);
+      }
+      await batch.commit();
+      set({ tracks: newTracks, trackName: newTracks[0] });
+      toast.success(`${DEFAULT_TRACK_COUNT} tracks created for event ${eventName}`);
+    } else {
+      const existingTracks = existingTracksSnapshot.docs.map(doc => doc.data().trackName).sort();
+      set({ tracks: existingTracks, trackName: existingTracks[0] });
+    }
+  },
   // setTrackName: (name) => set({ trackName: name }), 
   setTrack: (track) => {
     const { eventName } = get();
@@ -244,7 +275,11 @@ addRider: async (riderData) => {
     set({ riders: [], unsubscribeRiders: null });
   },
 
-  setRiderNumber: (num) => {
+  setRiderNumber: (num) => {    
+    if(num === undefined) {
+      set({ riderNumber: "" });
+      return;
+    } 
     console.log("Setting riderNumber to:", num);
     set({ riderNumber: num });
   },
@@ -456,68 +491,75 @@ addRider: async (riderData) => {
       toast.error("Failed to save result to cloud");
     }
   },
-importRidersToDb: async (importRiders) => {
-  const { activeRaceId, eventName, trackName } = get();
-
-  if (!db || !activeRaceId) {
-    console.error("Cannot import data: Missing dependencies (db or activeRaceId).");
-    return;
-  }
-
-  const ridersArray = Array.isArray(importRiders) ? importRiders : [importRiders];
+  importRidersToDb: async (importRiders) => {
+    const { tracks, eventName, trackName } = get();
   
-  // 1. Filter out invalid rows immediately
-  const validRiders = ridersArray.filter(
-    (r) => r.riderNumber && String(r.riderNumber).trim() !== ""
-  );
-
-  if (validRiders.length < ridersArray.length) {
-    toast.error(`Skipped ${ridersArray.length - validRiders.length} rider(s) with missing numbers`);
-  }
-
-  // 2. Create an array of Promises using setDoc and our Composite ID
-  const promises = validRiders.map((rider) => {
-    const rNumber = String(rider.riderNumber).trim();
-    
-    // 🟢 CREATE THE COMPOSITE ID: Same as addRider and handleStart
-    const customDocId = `${activeRaceId}_${rNumber}`;
-    
-    // 🟢 POINT TO TOP-LEVEL COLLECTION
-    const docRef = doc(db, "riders", customDocId);
-
-    const riderDoc = {
-      raceId: activeRaceId,
-      riderNumber: rNumber,
-      firstName: rider.firstName || "Unknown",
-      lastName: rider.lastName || "Rider",
-      eventName: eventName,
-      trackName: trackName,
-      caLicenceNumber: rider.caLicenceNumber || "",
-      category: rider.category || "Open",
-      status: "WAITING",
-      startTime: null,
-      startTimeMs: null,
-      finishTime: null,
-      finishTimeMs: null,
-      raceTime: null,
-      durationMs: null,
-      timestamp: serverTimestamp(),
-    };
-
-    // 🟢 Use setDoc with merge to prevent overwriting existing progress if re-imported
-    return setDoc(docRef, riderDoc, { merge: true });
-  });
-
-  try {
-    await Promise.all(promises);
-    toast.success(`Successfully imported ${promises.length} riders to ${trackName}`);
-    // Your onSnapshot listener in subscribeToRiders will automatically 
-    // pick these up and update the UI!
-  } catch (error) {
-    console.error("Error importing riders:", error);
-    toast.error("Import failed. Check console for details.");
-  }
-},  
+    if (!db || !trackName || trackName === "NO TRACK") {
+      toast.error("Please select a track before importing riders.");
+      return;
+    }
+  
+    const ridersArray = Array.isArray(importRiders) ? importRiders : [importRiders];
+    const validRiders = ridersArray.filter(
+      (r) => r.riderNumber && String(r.riderNumber).trim() !== ""
+    );
+  
+    if (validRiders.length < ridersArray.length) {
+      toast.error(`Skipped ${ridersArray.length - validRiders.length} rider(s) with missing numbers`);
+    }
+  
+    // Import to the current track first
+    const currentTrackName = trackName;
+    await get()._importRidersToTrack(validRiders, eventName, currentTrackName);
+  
+    // Then, clone to all other tracks
+    const otherTracks = tracks.filter(t => t !== currentTrackName);
+    for (const otherTrack of otherTracks) {
+      await get()._importRidersToTrack(validRiders, eventName, otherTrack, true);
+    }
+  
+    toast.success(`Successfully imported ${validRiders.length} riders to all tracks.`);
+  },
+  
+  _importRidersToTrack: async (riders, eventName, targetTrackName, isClone = false) => {
+    const batch = writeBatch(db);
+    const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
+    const formattedTrack = targetTrackName.replace(/\s+/g, '-').toUpperCase();
+    const raceId = `${formattedEvent}_${formattedTrack}`;
+  
+    riders.forEach((rider) => {
+      const rNumber = String(rider.riderNumber).trim();
+      const customDocId = `${raceId}_${rNumber}`;
+      const docRef = doc(db, "riders", customDocId);
+  
+      const riderDoc = {
+        ...rider,
+        raceId: raceId,
+        riderNumber: rNumber,
+        eventName: eventName,
+        trackName: targetTrackName,
+        status: "WAITING",
+        startTime: null,
+        startTimeMs: null,
+        finishTime: null,
+        finishTimeMs: null,
+        raceTime: null,
+        durationMs: null,
+        timestamp: serverTimestamp(),
+      };
+      batch.set(docRef, riderDoc, { merge: true });
+    });
+  
+    try {
+      await batch.commit();
+      if (!isClone) {
+        // toast.success(`Imported to ${targetTrackName}`);
+      }
+    } catch (error) {
+      console.error(`Error importing riders to ${targetTrackName}:`, error);
+      toast.error(`Import to ${targetTrackName} failed.`);
+    }
+  },
   resetRider: async (riderId) => {
     try {
       const { doc, updateDoc } = await import("firebase/firestore");
