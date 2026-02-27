@@ -23,7 +23,9 @@ export default function App() {
     tick, 
     initAuth, 
     initAuthListener, 
-    setIsOnline 
+    setIsOnline,
+    fetchTracks,
+    tracks 
   } = useRaceStore();
 
   // 1. Auth & Connectivity Listeners (Stay the same)
@@ -32,6 +34,13 @@ export default function App() {
     const unsubPromise = initAuth();
     return () => { unsubPromise.then((unsub) => unsub && unsub()); };
   }, [initAuth]);
+
+  // 1b. Data Persistence: Fetch tracks if event is selected but tracks are empty
+  useEffect(() => {
+    if (eventName && tracks.length === 0) {
+      fetchTracks(eventName);
+    }
+  }, [eventName, tracks.length, fetchTracks]);
 
   // 2. Single, Clean Firestore Subscription
   useEffect(() => {

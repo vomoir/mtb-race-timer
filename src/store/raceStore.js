@@ -22,8 +22,10 @@ import {
   browserLocalPersistence,
 } from "firebase/auth";
 import { db, auth } from "../modules/firebase";
+import trackSettings from "../assets/appsettings.json";
 
-const DEFAULT_TRACK_COUNT = 6;
+const DEFAULT_TRACK_COUNT = trackSettings.trackConfig.defaultCount || 6;
+const DEFAULT_TRACK_PREFIX = trackSettings.trackConfig.defaultPrefix || "TRACK";
 
 // Helper to generate consistent session IDs
 const formatSessionId = (event, track) => 
@@ -87,31 +89,44 @@ export const useRaceStore = create((set, get) => ({
   },
 
   // --- ACTIONS: Session Management ---
+  fetchTracks: async (name) => {
+    const targetEvent = name || get().eventName;
+    if (!targetEvent) return [];
+    
+    try {
+      const q = query(collection(db, "tracks"), where("eventName", "==", targetEvent));
+      const snapshot = await getDocs(q);
+      const tracks = snapshot.docs.map(doc => doc.data().trackName).sort();
+      set({ tracks });
+      return tracks;
+    } catch (error) {
+      console.error("Error fetching tracks:", error);
+      return [];
+    }
+  },
+
   createEventWithTracks: async (eventName) => {
     localStorage.setItem('eventName', eventName);
     set({ eventName, riders: [], trackName: "NO TRACK", tracks: [], activeRaceId: "" });
 
     const tracksRef = collection(db, "tracks");
-    const q = query(tracksRef, where("eventName", "==", eventName));
-    const snapshot = await getDocs(q);
+    const tracks = await get().fetchTracks(eventName);
 
-    if (snapshot.empty) {
+    if (tracks.length === 0) {
       const batch = writeBatch(db);
       const newTracks = [];
       for (let i = 1; i <= DEFAULT_TRACK_COUNT; i++) {
-        const tName = `TRACK${i}`;
+        const tName = `${DEFAULT_TRACK_PREFIX}${i}`;
         const trackDocRef = doc(tracksRef);
         batch.set(trackDocRef, { eventName, trackName: tName, createdAt: serverTimestamp() });
         newTracks.push(tName);
       }
       await batch.commit();
       set({ tracks: newTracks });
-      get().setSession(eventName, newTracks[0]);
+      await get().setSession(eventName, newTracks[0]);
       toast.success(`${DEFAULT_TRACK_COUNT} tracks created for ${eventName}`);
     } else {
-      const existingTracks = snapshot.docs.map(doc => doc.data().trackName).sort();
-      set({ tracks: existingTracks });
-      get().setSession(eventName, existingTracks[0]);
+      await get().setSession(eventName, tracks[0]);
     }
   },
 
@@ -349,26 +364,52 @@ export const useRaceStore = create((set, get) => ({
   },
 
   importRidersToDb: async (importRiders) => {
-    const { tracks, eventName, trackName } = get();
-    if (!trackName || trackName === "NO TRACK") return toast.error("Select a track first");
+    const { tracks, eventName } = get();
+    
+    // Ensure we have tracks to import into
+    if (!tracks || tracks.length === 0) {
+      return toast.error("No tracks found for this event. Please create a track first.");
+    }
     
     const ridersArray = Array.isArray(importRiders) ? importRiders : [importRiders];
     const validRiders = ridersArray.filter(r => r.riderNumber);
+    
+    if (validRiders.length === 0) return;
 
-    for (const t of tracks) {
+    try {
+      get().setLoading(true);
       const batch = writeBatch(db);
-      const raceId = formatSessionId(eventName, t);
-      validRiders.forEach(r => {
-        const docId = `${raceId}_${r.riderNumber}`;
-        batch.set(doc(db, "riders", docId), {
-          ...r, raceId, eventName, trackName: t, status: "WAITING",
-          startTime: null, startTimeMs: null, finishTime: null, finishTimeMs: null,
-          raceTime: null, durationMs: null, timestamp: serverTimestamp()
-        }, { merge: true });
+      
+      tracks.forEach(t => {
+        const raceId = formatSessionId(eventName, t);
+        validRiders.forEach(r => {
+          const docId = `${raceId}_${r.riderNumber}`;
+          batch.set(doc(db, "riders", docId), {
+            ...r,
+            raceId,
+            eventName,
+            trackName: t,
+            status: "WAITING",
+            startTime: null, startTimeMs: null,
+            finishTime: null, finishTimeMs: null,
+            raceTime: null, durationMs: null,
+            timestamp: serverTimestamp()
+          }, { merge: true });
+        });
       });
+
       await batch.commit();
+      
+      // Refresh riders for the current session to show the new imports
+      await get().fetchRidersForSession();
+      
+      get().setLoading(false);
+      toast.success(`Imported ${validRiders.length} riders to all ${tracks.length} tracks`);
+    } catch (error) {
+      console.error("Import failed:", error);
+      get().setLoading(false);
+      toast.error("Import failed. Check cloud connection.");
     }
-    toast.success(`Imported ${validRiders.length} riders to all tracks`);
   },
 
   renameTrack: async (newTrackName) => {
