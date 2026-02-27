@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "PLAYWRIGHT CHAMPIONSHIP 2026-02-27 / STAGE 1" [level=1] [ref=e8]:
+          - text: PLAYWRIGHT CHAMPIONSHIP 2026-02-27
+          - generic [ref=e9]: / STAGE 1
+        - generic [ref=e12]:
+          - generic [ref=e13]: Race Time
+          - text: 00:00:00
+      - generic [ref=e14]:
+        - navigation [ref=e15]:
+          - button "Register" [ref=e16]:
+            - img [ref=e17]
+            - text: Register
+          - button "Starter" [ref=e20]:
+            - img [ref=e21]
+            - text: Starter
+          - button "Finisher" [ref=e23]:
+            - img [ref=e24]
+            - text: Finisher
+          - button "Results" [active] [ref=e26]:
+            - img [ref=e27]
+            - text: Results
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e39]: ONLINE
+          - generic [ref=e40]:
+            - generic [ref=e41]: TRACK
+            - textbox "TRACK" [ref=e42]:
+              - /placeholder: NO TRACK
+              - text: STAGE 1
+            - button "Sync Riders" [ref=e43]:
+              - img [ref=e44]
+              - text: Sync Riders
+            - link "Share Finisher Link" [ref=e49] [cursor=pointer]:
+              - /url: http://localhost:5173/?event=PLAYWRIGHT%20CHAMPIONSHIP%202026-02-27&track=STAGE%201
+              - img [ref=e50]
+          - button "EXIT" [ref=e56]:
+            - img [ref=e57]
+            - generic [ref=e60]: EXIT
+  - generic [ref=e62]:
+    - generic [ref=e63]:
+      - button "Track Results" [ref=e64]:
+        - img [ref=e65]
+        - generic [ref=e66]: Track Results
+      - button "Overall Standings" [ref=e67]:
+        - img [ref=e68]
+        - generic [ref=e74]: Overall Standings
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - heading "STAGE 1" [level=2] [ref=e79]
+          - paragraph [ref=e80]: 0 finishers
+        - generic [ref=e81]:
+          - button "Export Track" [disabled] [ref=e82]:
+            - img [ref=e83]
+            - text: Export Track
+          - button "Export All" [ref=e86]:
+            - img [ref=e87]
+            - text: Export All
+      - table [ref=e91]:
+        - rowgroup [ref=e92]:
+          - row "Rank Rider Category Time" [ref=e93]:
+            - columnheader "Rank" [ref=e94]
+            - columnheader "Rider" [ref=e95]
+            - columnheader "Category" [ref=e96]
+            - columnheader "Time" [ref=e97]
+        - rowgroup
+      - paragraph [ref=e98]: No finishers yet for this track.
+```
