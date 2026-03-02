@@ -341,8 +341,8 @@ addRider: async (riderData) => {
       toast.error("Could not start rider.");
     }
   },
-  subscribeToRiders: (activeRaceId) => {
-    if (!activeRaceId) return null;
+  subscribeToRiders: (eventName) => {
+    if (!eventName) return null;
 
     // 1. POINT TO THE NEW TOP-LEVEL COLLECTION
     const baseCollection = collection(db, "riders");
@@ -350,10 +350,10 @@ addRider: async (riderData) => {
     // Build constraints (Removed orderBy startTime if it causes index issues initially)
     const q = query(
       baseCollection, 
-      where("raceId", "==", activeRaceId)
+      where("eventName", "==", eventName)
     );
 
-    console.log(`📡 Subscribing to NEW riders collection for: ${activeRaceId}`);
+    console.log(`📡 Subscribing to NEW riders collection for EVENT: ${eventName}`);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const liveRiders = snapshot.docs.map((doc) => {
@@ -618,19 +618,19 @@ cloneRidersFromTrack: async (sourceTrackName) => {
   return { success: true, count: ridersToClone.length };
 },
 fetchRidersForSession: async () => {
-  const { activeRaceId } = get();
+  const { eventName } = get();
 
-  // Guard: Don't fetch if no session is active
-  if (!activeRaceId) {
-    console.warn("No activeRaceId found. Aborting fetch.");
+  // Guard: Don't fetch if no event is active
+  if (!eventName) {
+    console.warn("No eventName found. Aborting fetch.");
     return;
   }
 
   try {
     const ridersRef = collection(db, "riders");
     
-    // 🟢 The Filter: Only get riders for this specific Event + Track combo
-    const q = query(ridersRef, where("raceId", "==", activeRaceId));
+    // 🟢 The Filter: Only get riders for this specific Event
+    const q = query(ridersRef, where("eventName", "==", eventName));
 
     const querySnapshot = await getDocs(q);
     
@@ -642,9 +642,9 @@ fetchRidersForSession: async () => {
     // Update local state with the filtered list
     set({ riders: loadedRiders });
     
-    console.log(`📡 Loaded ${loadedRiders.length} riders for session: ${activeRaceId}`);
+    console.log(`📡 Loaded ${loadedRiders.length} riders for event: ${eventName}`);
   } catch (error) {
-    console.error("Error fetching session riders:", error);
+    console.error("Error fetching event riders:", error);
   }
 },
 syncEventRiders: async (eventName) => {
@@ -740,9 +740,9 @@ renameTrack: async (newTrackName) => {
 },
 
 syncSessionRiders: async () => {
-  const { activeRaceId } = get();
-  if (!activeRaceId) {
-    toast.error("No active session to sync!");
+  const { eventName } = get();
+  if (!eventName) {
+    toast.error("No active event to sync!");
     return;
   }
 
@@ -750,7 +750,7 @@ syncSessionRiders: async () => {
   
   try {
     const ridersRef = collection(db, "riders");
-    const q = query(ridersRef, where("raceId", "==", activeRaceId));
+    const q = query(ridersRef, where("eventName", "==", eventName));
     const querySnapshot = await getDocs(q);
     
     const freshRiders = querySnapshot.docs.map(doc => ({
