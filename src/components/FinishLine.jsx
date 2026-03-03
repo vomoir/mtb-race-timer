@@ -73,9 +73,9 @@ const FinishLine = () => {
       <Card className="overflow-hidden">
         {/* --- Tabs --- */}
         <div className="flex bg-slate-50 border-b border-slate-200">
-          <TabButton tabName="capture" label="Capture" icon={Flag} count={pendingFinishes.length > 0 ? pendingFinishes.length : undefined} />
-          <TabButton tabName="onTrack" label="On Track" icon={List} count={ridersOnTrack.length} />
-          <TabButton tabName="log" label="Log" icon={Clock} />
+          <TabButton tabName="capture" label="Capture" icon={Flag} count={pendingFinishes.length > 0 ? pendingFinishes.length : undefined} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabButton tabName="onTrack" label="On Track" icon={List} count={ridersOnTrack.length} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabButton tabName="log" label="Log" icon={Clock} activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
         {/* --- Tab Content --- */}

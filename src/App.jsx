@@ -35,10 +35,10 @@ export default function App() {
 
   // 2. Single, Clean Firestore Subscription
   useEffect(() => {
-    if (!activeRaceId) return;
-    const unsubscribe = subscribeToRiders(activeRaceId);
+    if (!eventName) return;
+    const unsubscribe = subscribeToRiders(eventName);
     return () => { if (unsubscribe) unsubscribe(); };
-  }, [subscribeToRiders, activeRaceId]);
+  }, [subscribeToRiders, eventName]);
 
   // 3. Race Clock Tick
   useEffect(() => {

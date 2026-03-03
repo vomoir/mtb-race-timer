@@ -12,6 +12,7 @@ const Header = () => {
   
   const isOnline = useRaceStore((state) => state.isOnline);
   const trackName = useRaceStore((state) => state.trackName);
+  const tracks = useRaceStore((state) => state.tracks);
   const setTrack = useRaceStore((state) => state.setTrack);
   const eventName = useRaceStore((state) => state.eventName);
   const logout = useRaceStore((state) => state.logout);
@@ -95,17 +96,18 @@ const Header = () => {
               <span>{isOnline ? "ONLINE" : "OFFLINE"}</span>
             </div>
 
-            {/* Track Input and Actions */}
-            <div className="flex-grow flex items-center justify-center gap-2 bg-slate-800/50 p-1.5 rounded-lg">
-              <label htmlFor="trackNameInput" className="font-bold text-slate-400 pl-1">TRACK</label>
-              <input 
-                id="trackNameInput"
-                type="text"
+            {/* Track Select and Actions */}
+            <div className="flex-grow flex items-center justify-center gap-2 bg-slate-800/50 p-1.5 rounded-lg min-w-0">
+              <label htmlFor="trackSelect" className="font-bold text-slate-400 pl-1 shrink-0">TRACK</label>
+              <select 
+                id="trackSelect"
                 value={trackName}
                 onChange={(e) => setTrack(e.target.value)}
-                className="flex-grow bg-slate-700/80 border border-slate-600 rounded px-2 py-1 font-mono text-orange-400 focus:border-orange-500 outline-none uppercase"
-                placeholder="NO TRACK"
-              />
+                className="flex-grow bg-slate-700/80 border border-slate-600 rounded px-2 py-1 font-mono text-orange-400 focus:border-orange-500 outline-none uppercase min-w-0"
+              >
+                <option value="NO TRACK">NO TRACK</option>
+                {tracks?.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
               <SyncButton />
               {shareUrl && (
                 <a 
@@ -113,7 +115,7 @@ const Header = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Share Finisher Link"
-                  className="p-2 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+                  className="p-2 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition-colors shrink-0"
                 >
                   <Share2 size={16} />
                 </a>

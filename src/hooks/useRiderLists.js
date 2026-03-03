@@ -7,8 +7,8 @@ export function useRiderLists() {
   // 1. Grab everything needed from the store
   // Adding '|| []' is the "Safety Net" that prevents the .filter error
   const riders = useRaceStore((state) => state.riders ?? []);
-  // const trackName = useRaceStore((state) => state.trackName);
-  // const eventName = useRaceStore((state) => state.eventName);
+  const tracks = useRaceStore((state) => state.tracks ?? []);
+  const trackName = useRaceStore((state) => state.trackName);
   const activeRaceId = useRaceStore((state) => state.activeRaceId);
   const now = getTime(); // Assuming getTime returns a string like "HH:MM:SS"
 
@@ -41,8 +41,48 @@ export function useRiderLists() {
   }, [currentTrackRiders]);
 
   const waitingRiders = useMemo(() => {
-    return currentTrackRiders.filter((r) => r.status === "WAITING");
-  }, [currentTrackRiders]);
+    const currentWaiting = currentTrackRiders.filter((r) => r.status === "WAITING");
+    if (currentWaiting.length === 0) return [];
+    
+    const currentTrackIndex = tracks.indexOf(trackName);
+    
+    // If it's the first track or track not found, just sort by rider number
+    if (currentTrackIndex <= 0) {
+      return [...currentWaiting].sort((a, b) => Number(a.riderNumber) - Number(b.riderNumber));
+    }
+    
+    const previousTracks = tracks.slice(0, currentTrackIndex);
+    
+    // Pre-calculate stats for all riders for faster sorting
+    const riderStats = {};
+    riders.forEach(r => {
+      if (previousTracks.includes(r.trackName) && r.status === "FINISHED") {
+        if (!riderStats[r.riderNumber]) {
+          riderStats[r.riderNumber] = { stagesCount: 0, totalMs: 0 };
+        }
+        riderStats[r.riderNumber].stagesCount += 1;
+        riderStats[r.riderNumber].totalMs += (r.durationMs || 0);
+      }
+    });
+
+    return [...currentWaiting].sort((a, b) => {
+      const statsA = riderStats[a.riderNumber] || { stagesCount: 0, totalMs: Infinity };
+      const statsB = riderStats[b.riderNumber] || { stagesCount: 0, totalMs: Infinity };
+
+      // 1. Sort by most stages completed first
+      if (statsB.stagesCount !== statsA.stagesCount) {
+        return statsB.stagesCount - statsA.stagesCount;
+      }
+      
+      // 2. Then by fastest total time
+      if (statsA.totalMs !== statsB.totalMs) {
+        return statsA.totalMs - statsB.totalMs;
+      }
+
+      // 3. Fallback to rider number
+      return Number(a.riderNumber) - Number(b.riderNumber);
+    });
+  }, [currentTrackRiders, riders, tracks, trackName]);
 
   return { ridersOnTrack, finishedRiders, waitingRiders };
 }

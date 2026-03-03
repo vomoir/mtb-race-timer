@@ -54,12 +54,31 @@ export const useRaceStore = create((set, get) => ({
         newTracks.push(trackName);
       }
       await batch.commit();
-      set({ tracks: newTracks, trackName: newTracks[0] });
+      
+      const firstTrack = newTracks[0];
+      const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
+      const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
+      
+      set({ 
+        tracks: newTracks, 
+        trackName: firstTrack,
+        activeRaceId: `${formattedEvent}_${formattedTrack}`
+      });
       toast.success(`${DEFAULT_TRACK_COUNT} tracks created for event ${eventName}`);
     } else {
       const existingTracks = existingTracksSnapshot.docs.map(doc => doc.data().trackName).sort();
-      set({ tracks: existingTracks, trackName: existingTracks[0] });
+      const firstTrack = existingTracks[0];
+      const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
+      const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
+
+      set({ 
+        tracks: existingTracks, 
+        trackName: firstTrack,
+        activeRaceId: `${formattedEvent}_${formattedTrack}`
+      });
     }
+    // Refresh riders for the initial track
+    get().fetchRidersForSession();
   },
   // setTrackName: (name) => set({ trackName: name }), 
   setTrack: (track) => {
@@ -71,6 +90,8 @@ export const useRaceStore = create((set, get) => ({
       trackName: track,
       activeRaceId: `${formattedEvent}_${formattedTrack}`
     });
+    // Trigger fetch for the new track's riders
+    get().fetchRidersForSession();
   },
 
   riders: [],
@@ -294,45 +315,46 @@ addRider: async (riderData) => {
   soloNumber: "",
   setSoloNumber: (num) => set({ soloNumber: num }),
 
-  handleStart: async (raceId, riderNumber) => {
-    if (!riderNumber.trim()) return;
-    const { riders, eventName, trackName, activeRaceId } = get();
+  handleStart: async (raceIdOrRider, manualNumber) => {
+    // 1. Resolve Parameters (Handles both string raceId OR full rider object)
+    let riderNumber = manualNumber;
+    let raceId = typeof raceIdOrRider === 'string' ? raceIdOrRider : null;
 
-    // Use passed raceId if available, otherwise fallback to activeRaceId
+    if (raceIdOrRider && typeof raceIdOrRider === 'object') {
+      riderNumber = raceIdOrRider.riderNumber;
+      raceId = raceIdOrRider.raceId;
+    }
+
+    if (!riderNumber || !riderNumber.trim()) return;
+
+    const { riders, eventName, trackName, activeRaceId } = get();
     const effectiveRaceId = raceId || activeRaceId;
 
-    // 1. Check local state for the rider
-    const existingRider = riders.find((r) => r.riderNumber === riderNumber);
     const nowIso = getTime();
     const nowMs = Date.now();
 
     // 2. CONSISTENCY: Always use the new top-level path and Composite ID
-    // If the rider already has an ID, use it. Otherwise, build the composite one.
-    const docId = existingRider?.id || `${effectiveRaceId}_${riderNumber}`;
-    const docRef = doc(db, "riders", docId); // 🟢 TOP LEVEL COLLECTION
+    const docId = `${effectiveRaceId}_${riderNumber}`;
+    const docRef = doc(db, "riders", docId);
 
     const startData = {
       startTime: nowIso,
       startTimeMs: nowMs,
       status: "ON_TRACK",
-      riderNumber: riderNumber, // Ensure this is stored
-      raceId: effectiveRaceId,     // Ensure this is stored for ad-hoc riders
-      eventName: eventName, // Add this
-      trackName: trackName, // Add this
+      riderNumber: riderNumber,
+      raceId: effectiveRaceId,
+      eventName: eventName,
+      trackName: trackName,
     };
 
     try {
-      // 3. USE setDoc WITH MERGE instead of updateDoc
-      // This fixes the "No document found" error by creating it if missing
       await setDoc(docRef, startData, { merge: true });
 
       // 4. Update local state
       set((state) => ({
-        riders: existingRider 
-          ? state.riders.map((r) => r.id === docId ? { ...r, ...startData } : r)
-          : [...state.riders, { id: docId, ...startData }], // Add ad-hoc rider if new
+        riders: state.riders.map((r) => r.id === docId ? { ...r, ...startData } : r),
         loading: false,
-        manualNumber: ""
+        lastStarted: { riderNumber, time: nowIso }
       }));
 
       toast.success(`Rider #${riderNumber} Started!`);
@@ -341,8 +363,8 @@ addRider: async (riderData) => {
       toast.error("Could not start rider.");
     }
   },
-  subscribeToRiders: (activeRaceId) => {
-    if (!activeRaceId) return null;
+  subscribeToRiders: (eventName) => {
+    if (!eventName) return null;
 
     // 1. POINT TO THE NEW TOP-LEVEL COLLECTION
     const baseCollection = collection(db, "riders");
@@ -350,10 +372,10 @@ addRider: async (riderData) => {
     // Build constraints (Removed orderBy startTime if it causes index issues initially)
     const q = query(
       baseCollection, 
-      where("raceId", "==", activeRaceId)
+      where("eventName", "==", eventName)
     );
 
-    console.log(`📡 Subscribing to NEW riders collection for: ${activeRaceId}`);
+    console.log(`📡 Subscribing to NEW riders collection for EVENT: ${eventName}`);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const liveRiders = snapshot.docs.map((doc) => {
@@ -517,6 +539,9 @@ addRider: async (riderData) => {
     for (const otherTrack of otherTracks) {
       await get()._importRidersToTrack(validRiders, eventName, otherTrack, true);
     }
+    
+    // Refresh local state to include the newly imported riders across all tracks
+    await get().fetchRidersForSession();
   
     toast.success(`Successfully imported ${validRiders.length} riders to all tracks.`);
   },
@@ -586,51 +611,20 @@ addRider: async (riderData) => {
       console.error("Reset failed:", error);
     }
 },
-cloneRidersFromTrack: async (sourceTrackName) => {
-  const { riders, eventName, trackName, addRider, fetchEventResults } = get();
-  
-  // 1. Find all riders from the source track in THIS event
-  const allRiders = await fetchEventResults(eventName);
-  const sourceRiders = allRiders.filter(r => r.trackName === sourceTrackName);
-
-  if (sourceRiders.length === 0) return { success: false, count: 0 };
-
-  // 2. Filter out riders that are ALREADY in the current track (to avoid duplicates)
-  const currentRiderNumbers = new Set(
-    riders.filter(r => r.trackName === trackName).map(r => r.riderNumber)
-  );
-
-  const ridersToClone = sourceRiders.filter(
-    (r) => !currentRiderNumbers.has(r.riderNumber)
-  );
-
-  // 3. Map to new objects (stripping timing data) and save
-  const clonePromises = ridersToClone.map(rider => {
-    const { ...cleanData } = rider;
-    return addRider({
-      ...cleanData,
-      trackName: trackName, // Assign to current track
-      status: "WAITING",
-    });
-  });
-
-  await Promise.all(clonePromises);
-  return { success: true, count: ridersToClone.length };
-},
 fetchRidersForSession: async () => {
-  const { activeRaceId } = get();
+  const { eventName } = get();
 
-  // Guard: Don't fetch if no session is active
-  if (!activeRaceId) {
-    console.warn("No activeRaceId found. Aborting fetch.");
+  // Guard: Don't fetch if no event is active
+  if (!eventName) {
+    console.warn("No eventName found. Aborting fetch.");
     return;
   }
 
   try {
     const ridersRef = collection(db, "riders");
     
-    // 🟢 The Filter: Only get riders for this specific Event + Track combo
-    const q = query(ridersRef, where("raceId", "==", activeRaceId));
+    // 🟢 The Filter: Only get riders for this specific Event
+    const q = query(ridersRef, where("eventName", "==", eventName));
 
     const querySnapshot = await getDocs(q);
     
@@ -642,9 +636,9 @@ fetchRidersForSession: async () => {
     // Update local state with the filtered list
     set({ riders: loadedRiders });
     
-    console.log(`📡 Loaded ${loadedRiders.length} riders for session: ${activeRaceId}`);
+    console.log(`📡 Loaded ${loadedRiders.length} riders for event: ${eventName}`);
   } catch (error) {
-    console.error("Error fetching session riders:", error);
+    console.error("Error fetching event riders:", error);
   }
 },
 syncEventRiders: async (eventName) => {
@@ -740,9 +734,9 @@ renameTrack: async (newTrackName) => {
 },
 
 syncSessionRiders: async () => {
-  const { activeRaceId } = get();
-  if (!activeRaceId) {
-    toast.error("No active session to sync!");
+  const { eventName } = get();
+  if (!eventName) {
+    toast.error("No active event to sync!");
     return;
   }
 
@@ -750,7 +744,7 @@ syncSessionRiders: async () => {
   
   try {
     const ridersRef = collection(db, "riders");
-    const q = query(ridersRef, where("raceId", "==", activeRaceId));
+    const q = query(ridersRef, where("eventName", "==", eventName));
     const querySnapshot = await getDocs(q);
     
     const freshRiders = querySnapshot.docs.map(doc => ({
