@@ -43,7 +43,7 @@ const StarterComponent = () => {
     //  See if rider is in waiting list
     const waitingRider = getRiderWaiting(waitingRiders, riderNumber);
     if (waitingRider) {
-      handleStart(waitingRider);            
+      handleStart(waitingRider.raceId, waitingRider.riderNumber);            
     } else {
       // If not in waiting list, show confirmation to start anyway
       confirmDialog.current.open({

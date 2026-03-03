@@ -83,14 +83,12 @@ export const RiderImporter = () => {
         toast.error(`⚠️ Skipped ${skippedCount} riders missing a Rider Number!`);
       }
 
-      setRiders(newRiders);
       importRidersToDb(newRiders);
       toast.success(`Imported ${newRiders.length} riders successfully`);
     };
     reader.readAsText(file);
   };
   const loadDemoData = () => {
-    setRiders(demoRiders);
     importRidersToDb(demoRiders);
     toast.success("Demo data loaded!");
   };
