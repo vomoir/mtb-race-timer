@@ -81,14 +81,34 @@ export const useRaceStore = create((set, get) => ({
     get().fetchRidersForSession();
   },
   // setTrackName: (name) => set({ trackName: name }), 
-  setTrack: (track) => {
-    const { eventName } = get();
+  setTrack: async (track) => {
+    const { eventName, tracks } = get();
     const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
     const formattedTrack = track.replace(/\s+/g, '-').toUpperCase();
+    const newActiveRaceId = `${formattedEvent}_${formattedTrack}`;
     
+    // 1. Check if it's a new track that needs to be persisted
+    if (track && !tracks.includes(track)) {
+      try {
+        const tracksRef = collection(db, "tracks");
+        await addDoc(tracksRef, { 
+          eventName, 
+          trackName: track, 
+          createdAt: serverTimestamp() 
+        });
+        
+        // Update local tracks array
+        const updatedTracks = [...tracks, track].sort();
+        set({ tracks: updatedTracks });
+      } catch (error) {
+        console.error("Error adding new track:", error);
+        toast.error("Failed to save new track to cloud");
+      }
+    }
+
     set({ 
       trackName: track,
-      activeRaceId: `${formattedEvent}_${formattedTrack}`
+      activeRaceId: newActiveRaceId
     });
     // Trigger fetch for the new track's riders
     get().fetchRidersForSession();
@@ -682,56 +702,71 @@ fetchEventResults: async (eventName) => {
   }
 },
 renameTrack: async (newTrackName) => {
-  const { eventName, trackName, activeRaceId, riders } = get();
-  if (!trackName || trackName === "NO TRACK") return;
+    const { eventName, trackName, activeRaceId, riders, tracks } = get();
+    if (!trackName || trackName === "NO TRACK") return;
 
-  const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
-  const formattedNewTrack = newTrackName.replace(/\s+/g, '-').toUpperCase();
-  const newActiveRaceId = `${formattedEvent}_${formattedNewTrack}`;
+    const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
+    const formattedNewTrack = newTrackName.replace(/\s+/g, '-').toUpperCase();
+    const newActiveRaceId = `${formattedEvent}_${formattedNewTrack}`;
 
-  // Filter riders for current track (using local state which should be synced)
-  const currentRiders = riders.filter(r => r.raceId === activeRaceId);
+    try {
+        // 1. Update the 'tracks' collection in Firestore
+        const tracksRef = collection(db, "tracks");
+        const q = query(tracksRef, where("eventName", "==", eventName), where("trackName", "==", trackName));
+        const snapshot = await getDocs(q);
 
-  if (currentRiders.length === 0) {
-      set({ 
-          trackName: newTrackName,
-          activeRaceId: newActiveRaceId
-      });
-      toast.success(`Track renamed to ${newTrackName}`);
-      return;
-  }
+        if (!snapshot.empty) {
+            const trackDocRef = snapshot.docs[0].ref;
+            await updateDoc(trackDocRef, { trackName: newTrackName });
+        }
 
-  try {
-      const promises = currentRiders.map(async (rider) => {
-          const oldDocRef = doc(db, "riders", rider.id);
-          const newDocId = `${newActiveRaceId}_${rider.riderNumber}`;
-          const newDocRef = doc(db, "riders", newDocId);
+        // 2. Update the local 'tracks' array
+        const updatedTracks = tracks.map(t => t === trackName ? newTrackName : t).sort();
 
-          const { id, ...riderData } = rider;
-          const newData = {
-              ...riderData,
-              trackName: newTrackName,
-              raceId: newActiveRaceId,
-          };
+        // 3. Migrate riders in Firestore
+        const currentRiders = riders.filter(r => r.raceId === activeRaceId);
+        
+        if (currentRiders.length > 0) {
+            // Use a batch for atomic migration if possible (limit 500)
+            // For simplicity and to avoid batch limit issues for large events, we'll keep the promise approach 
+            // but wrapped in the same try-catch
+            const promises = currentRiders.map(async (rider) => {
+                const oldDocRef = doc(db, "riders", rider.id);
+                const newDocId = `${newActiveRaceId}_${rider.riderNumber}`;
+                const newDocRef = doc(db, "riders", newDocId);
 
-          await setDoc(newDocRef, newData);
-          await deleteDoc(oldDocRef);
-      });
+                const { id, ...riderData } = rider;
+                const newData = {
+                    ...riderData,
+                    trackName: newTrackName,
+                    raceId: newActiveRaceId,
+                };
 
-      await Promise.all(promises);
+                await setDoc(newDocRef, newData);
+                await deleteDoc(oldDocRef);
+            });
+            await Promise.all(promises);
+        }
 
-      set({
-          trackName: newTrackName,
-          activeRaceId: newActiveRaceId,
-          riders: [] // Clear riders to force a refresh or let subscription handle it
-      });
-      
-      toast.success(`Track renamed to ${newTrackName}`);
-  } catch (error) {
-      console.error("Error renaming track:", error);
-      toast.error("Failed to rename track");
-  }
-},
+        // 4. Update local state
+        set({
+            trackName: newTrackName,
+            activeRaceId: newActiveRaceId,
+            tracks: updatedTracks,
+            riders: riders.map(r => r.raceId === activeRaceId ? {
+                ...r,
+                trackName: newTrackName,
+                raceId: newActiveRaceId,
+                id: `${newActiveRaceId}_${r.riderNumber}`
+            } : r)
+        });
+        
+        toast.success(`Track renamed to ${newTrackName}`);
+    } catch (error) {
+        console.error("Error renaming track:", error);
+        toast.error("Failed to rename track");
+    }
+  },
 
 syncSessionRiders: async () => {
   const { eventName } = get();
