@@ -69,9 +69,9 @@ const LoginScreen = () => {
     // Update history list (prevent duplicates)
     const newHistory = [eventName, ...history.filter(h => h !== eventName)].slice(0, 5);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
+    
     createEventWithTracks(eventName); 
     syncEventRiders(eventName);
-    navigate('/registration');
   };
 
   const clearHistory = () => {

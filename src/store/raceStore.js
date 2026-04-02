@@ -38,7 +38,8 @@ export const useRaceStore = create((set, get) => ({
   
   createEventWithTracks: async (eventName) => {
     localStorage.setItem('eventName', eventName);
-    set({ eventName, riders: [], trackName: "NO TRACK", tracks: [] });
+    // Clear old data but don't set eventName yet to avoid premature redirect
+    set({ riders: [], trackName: "NO TRACK", tracks: [] });
 
     const tracksCollectionRef = collection(db, "tracks");
     const q = query(tracksCollectionRef, where("eventName", "==", eventName));
@@ -60,6 +61,7 @@ export const useRaceStore = create((set, get) => ({
       const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
       
       set({ 
+        eventName, // Set eventName here at the end
         tracks: newTracks, 
         trackName: firstTrack,
         activeRaceId: `${formattedEvent}_${formattedTrack}`
@@ -72,6 +74,7 @@ export const useRaceStore = create((set, get) => ({
       const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
 
       set({ 
+        eventName, // Set eventName here at the end
         tracks: existingTracks, 
         trackName: firstTrack,
         activeRaceId: `${formattedEvent}_${formattedTrack}`
