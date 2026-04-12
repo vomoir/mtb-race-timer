@@ -9,8 +9,27 @@ import ConfirmDialog from "./ConfirmDialog";
 export const RiderImporter = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
-  const { riders, setRiders, importRidersToDb, deleteAllRiders } = useRaceStore();
+  const { riders, setRiders, importRidersToDb, deleteAllRiders, deleteAllEventRiders, fetchEventResults, eventName } = useRaceStore();
   const confirmDialog = useRef(null);
+
+  const exportEventJSON = async () => {
+    try {
+      const allData = await fetchEventResults(eventName);
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${eventName}_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Backup downloaded");
+    } catch (error) {
+      console.error("Backup failed:", error);
+      toast.error("Failed to generate backup");
+    }
+  };
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -168,31 +187,51 @@ export const RiderImporter = () => {
               if (e.target.files[0]) handleFiles(e.target.files[0]);
             }}
           />
-          <div className="flex gap-3 justify-center flex-wrap">
-            <label
-              htmlFor="fileInput"
-              className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold cursor-pointer"
-            >
-              Upload CSV
-            </label>
-            <button
-              onClick={loadDemoData}
-              className="px-4 py-2 bg-slate-600 text-white rounded-lg text-sm font-bold"
-            >
-              Load Demo Data
-            </button>
-            <button
-              onClick={() => {
-                confirmDialog.current.open({
-                  title: "Delete All Riders",
-                  message: "Are you sure you want to DELETE ALL riders from this track? This cannot be undone.",
-                  onConfirm: () => deleteAllRiders()
-                });
-              }}
-              className="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
-            >
-              <Trash2 size={16} /> Delete All
-            </button>
+          <div className="flex flex-col gap-4 pt-4 border-t border-slate-100">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">Admin Controls</h3>
+              <button 
+                onClick={exportEventJSON}
+                className="text-xs font-bold text-blue-600 hover:underline"
+              >
+                Download JSON Backup
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                onClick={loadDemoData}
+                className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors"
+              >
+                Load Demo
+              </button>
+              
+              <button
+                onClick={() => {
+                  confirmDialog.current.open({
+                    title: "Clear Current Track",
+                    message: "Delete all riders from THIS TRACK only?",
+                    onConfirm: () => deleteAllRiders()
+                  });
+                }}
+                className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
+              >
+                Clear Track
+              </button>
+
+              <button
+                onClick={() => {
+                  confirmDialog.current.open({
+                    title: "⚠️ CLEAR ENTIRE EVENT",
+                    message: "This will delete ALL riders across ALL tracks for this event. This cannot be undone!",
+                    onConfirm: () => deleteAllEventRiders()
+                  });
+                }}
+                className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors col-span-2"
+              >
+                Clear Entire Event
+              </button>
+            </div>
           </div>
         </div>
       )}

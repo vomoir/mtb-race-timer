@@ -259,6 +259,25 @@ addRider: async (riderData) => {
       toast.error("Failed to delete riders");
     }
   },
+  deleteAllEventRiders: async () => {
+    const { eventName } = get();
+    if (!eventName) return;
+
+    try {
+      const ridersRef = collection(db, "riders");
+      const q = query(ridersRef, where("eventName", "==", eventName));
+      const snapshot = await getDocs(q);
+      
+      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      set({ riders: [] });
+      toast.success(`All riders deleted for event: ${eventName}`);
+    } catch (error) {
+      console.error("Error deleting all event riders:", error);
+      toast.error("Failed to delete event riders");
+    }
+  },
   initAuth: async () => {
     await setPersistence(auth, browserLocalPersistence);
     // sign in anonymously if not already signed in
