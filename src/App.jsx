@@ -17,7 +17,6 @@ import {RiderRegistration } from './components/RiderRegistration';
 // --- Helpers ---
 export default function App() {
   const { 
-    activeRaceId, // Using the ID we generate in the store
     eventName, 
     subscribeToRiders, 
     tick, 

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Users, Trash2 } from "lucide-react";
+import { Users } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRaceStore } from "../store/raceStore"; // Import the hook
 import { Card } from "./Card";
@@ -9,7 +9,7 @@ import ConfirmDialog from "./ConfirmDialog";
 export const RiderImporter = () => {
   const [activeTab, setActiveTab] = useState("import");
   const [dragActive, setDragActive] = useState(false);
-  const { riders, setRiders, importRidersToDb, deleteAllRiders, deleteAllEventRiders, fetchEventResults, eventName } = useRaceStore();
+  const { riders, importRidersToDb, deleteAllRiders, deleteAllEventRiders, fetchEventResults, eventName } = useRaceStore();
   const confirmDialog = useRef(null);
 
   const exportEventJSON = async () => {
@@ -166,7 +166,6 @@ export const RiderImporter = () => {
             e.preventDefault();
             setDragActive(false);
             if (e.dataTransfer.files[0]) handleFiles(e.dataTransfer.files[0]);
-            toast.success("File import successful");
           }}
         >
           <p className="font-medium text-slate-700">
@@ -175,6 +174,13 @@ export const RiderImporter = () => {
           <p className="text-xs text-slate-400 mb-4">
             Format: CA Licence, Category, Grade, First Name, Surname, Number
           </p>
+
+          <button
+            onClick={() => document.getElementById('fileInput').click()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors mb-4"
+          >
+            Select CSV File
+          </button>
 
           {/* Mobile-friendly file picker */}
           <input
