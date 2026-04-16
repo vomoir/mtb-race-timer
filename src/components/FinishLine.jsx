@@ -24,13 +24,13 @@ const FinishLine = () => {
 
   const handleCapture = () => {
     setPendingFinishes((prev) => [
+      ...prev,
       {
         id: crypto.randomUUID(),
         finishTime: getTime(),
         finishTimeMs: getTimeMs(),
         riderNumber: "",
       },
-      ...prev,
     ]);
   };
 
