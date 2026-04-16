@@ -17,7 +17,6 @@ import {RiderRegistration } from './components/RiderRegistration';
 // --- Helpers ---
 export default function App() {
   const { 
-    activeRaceId, // Using the ID we generate in the store
     eventName, 
     subscribeToRiders, 
     tick, 
@@ -57,21 +56,18 @@ export default function App() {
       window.removeEventListener("offline", handleOffline);
     };
   }, [setIsOnline]);
-  // Only show the app if eventName is an actual string with length
-  if (!eventName || eventName.trim().length === 0) {
-    return <LoginScreen />;
-  }
-
   // --- RENDER SECTION ---
-  // No more early returns!
   return (
     <div className="min-h-screen bg-slate-100 font-sans pb-20">
       {/* Header only shows if we have an event selected */}
-      <Header />
+      {eventName && <Header />}
 
       <Routes>
-        {/* Home Path */}
-        <Route path="/" element={<RiderRegistration />} />
+        {/* Home Path: If no event, show Login. If event exists, redirect to registration */}
+        <Route 
+          path="/" 
+          element={!eventName ? <LoginScreen /> : <Navigate to="/registration" />} 
+        />
         
         {/* Protected Routes: Redirect to "/" if no event name exists */}
         <Route 

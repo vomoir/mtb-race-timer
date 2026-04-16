@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Clock, LogIn, Trophy, MapPin, ArrowRight, PlusCircle, History, Trash2, Share2 } from "lucide-react";
+import { Clock, LogIn, Trophy, MapPin, ArrowRight, PlusCircle, History, Trash2, Share2, Radio, AlertTriangle } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { InstallButton } from "./InstallButton";
+import ConfirmDialog from "./ConfirmDialog";
 import toast from "react-hot-toast";
 
 const LoginScreen = () => {
@@ -12,9 +13,23 @@ const LoginScreen = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const { createEventWithTracks, setTrack, syncEventRiders, fetchEventResults } = useRaceStore();
+  const { 
+    createEventWithTracks, 
+    setTrack, 
+    syncEventRiders, 
+    fetchEventResults,
+    liveEvents,
+    fetchLiveEvents,
+    deleteAllEvents,
+    setEvent
+  } = useRaceStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const confirmDialog = useRef(null);
+
+  useEffect(() => {
+    fetchLiveEvents();
+  }, [fetchLiveEvents]);
 
   useEffect(() => {
     const eventNameFromUrl = searchParams.get('event');
@@ -69,9 +84,9 @@ const LoginScreen = () => {
     // Update history list (prevent duplicates)
     const newHistory = [eventName, ...history.filter(h => h !== eventName)].slice(0, 5);
     localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
+    
     createEventWithTracks(eventName); 
     syncEventRiders(eventName);
-    navigate('/registration');
   };
 
   const clearHistory = () => {
@@ -93,24 +108,59 @@ const LoginScreen = () => {
     toast.success("Event link copied to clipboard!");
   };
 
+  const handleDeleteAllEvents = () => {
+    confirmDialog.current.open({
+      title: "⚠️ DELETE ALL CLOUD DATA",
+      message: "This will permanently delete ALL events, riders, and results from the cloud database. This cannot be undone.",
+      onConfirm: async () => {
+        await deleteAllEvents();
+        fetchLiveEvents(); // Refresh list
+      }
+    });
+  };
+
 return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl">
         <h1 className="text-2xl font-black text-slate-900 mb-2">Race Timer Pro</h1>
         <p className="text-slate-500 mb-8 italic">"Ready for the next stage?"</p>
 
+        {/* Live Now Section */}
+        {liveEvents.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Radio size={14} className="text-red-500 animate-pulse" /> Live Now
+            </h2>
+            <div className="space-y-2">
+              {liveEvents.map(event => (
+                <button
+                  key={event}
+                  onClick={() => handleStart(event)}
+                  className="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl transition-all text-left group"
+                >
+                  <span className="font-bold text-slate-700">{event}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-red-500 uppercase tracking-tighter">Join Live</span>
+                    <ArrowRight size={18} className="text-red-300 group-hover:text-red-500" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Existing Events Section */}
         {history.length > 0 && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <History size={14} /> Continue Recent Event
+                <History size={14} /> Local History
               </h2>
               <button 
                 onClick={clearHistory}
                 className="text-xs text-red-400 hover:text-red-600 font-bold hover:underline transition-colors"
               >
-                CLEAR ALL
+                CLEAR LIST
               </button>
             </div>
             <div className="space-y-2">
@@ -132,8 +182,8 @@ return (
                   </button>
                   <button
                     onClick={(e) => removeEvent(e, prevEvent)}
-                    className="p-4 text-slate-300 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-xl transition-all"
-                    title="Remove event"
+                    className="p-4 text-slate-300 hover:text-red-500 hover:bg-red-100 border border-transparent hover:border-red-100 rounded-xl transition-all"
+                    title="Remove from history"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -144,7 +194,7 @@ return (
         )}
 
         {/* Create New Section */}
-        <div>
+        <div className="mb-8">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
             <PlusCircle size={14} /> Start New Event
           </h2>
@@ -164,11 +214,23 @@ return (
           </div>
         </div>
 
+        {/* Global Admin Section */}
+        <div className="pt-6 border-t border-slate-100">
+           <button 
+            onClick={handleDeleteAllEvents}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100"
+          >
+            <AlertTriangle size={14} /> Delete ALL Events from Cloud
+          </button>
+        </div>
+
         <div className="mt-8 flex justify-center">
           <InstallButton />
         </div>
       </div>
+      <ConfirmDialog ref={confirmDialog} />
     </div>
   );
 };
+
 export default LoginScreen;

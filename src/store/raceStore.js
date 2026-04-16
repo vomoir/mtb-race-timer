@@ -15,6 +15,8 @@ import {
   query,
   where,
   writeBatch,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -35,10 +37,114 @@ export const useRaceStore = create((set, get) => ({
   trackName: "NO TRACK",
   tracks: [],
   setTracks: (tracks) => set({ tracks }),
+  liveEvents: [],
+  fetchLiveEvents: async () => {
+    try {
+      const tracksRef = collection(db, "tracks");
+      // Get tracks from the last 24 hours
+      const yesterday = new Date();
+      yesterday.setHours(yesterday.getHours() - 24);
+      
+      const q = query(
+        tracksRef, 
+        where("createdAt", ">", yesterday),
+        orderBy("createdAt", "desc")
+      );
+      
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        set({ liveEvents: [] });
+        return;
+      }
+
+      // We only ever want ONE live event. Check the most recent event first.
+      const activeTracks = snapshot.docs.filter(d => !d.data().isCompleted);
+      if (activeTracks.length === 0) {
+        set({ liveEvents: [] });
+        return;
+      }
+
+      const recentEvents = [...new Set(activeTracks.map(doc => doc.data().eventName))];
+      const latestEventName = recentEvents[0];
+
+      // Check if this latest event is "Completed"
+      // Definition: Has riders, but NONE are WAITING or ON_TRACK
+      const ridersRef = collection(db, "riders");
+      const ridersSnap = await getDocs(query(ridersRef, where("eventName", "==", latestEventName)));
+      
+      if (ridersSnap.empty) {
+        // New event with no riders yet is considered Live
+        set({ liveEvents: [latestEventName] });
+        return;
+      }
+
+      const hasActiveRiders = ridersSnap.docs.some(d => 
+        ["WAITING", "ON_TRACK"].includes(d.data().status)
+      );
+
+      if (hasActiveRiders) {
+        set({ liveEvents: [latestEventName] });
+      } else {
+        // If the latest is completed, we don't show any live events
+        set({ liveEvents: [] });
+      }
+    } catch (error) {
+      console.error("Error fetching live events:", error);
+    }
+  },
+  
+  deleteAllEvents: async () => {
+    try {
+      const ridersRef = collection(db, "riders");
+      const tracksRef = collection(db, "tracks");
+      
+      const [ridersSnap, tracksSnap] = await Promise.all([
+        getDocs(ridersRef),
+        getDocs(tracksRef)
+      ]);
+
+      const deletePromises = [
+        ...ridersSnap.docs.map(d => deleteDoc(d.ref)),
+        ...tracksSnap.docs.map(d => deleteDoc(d.ref))
+      ];
+
+      await Promise.all(deletePromises);
+      
+      set({ liveEvents: [], riders: [], tracks: [], eventName: "", trackName: "NO TRACK" });
+      toast.success("Cloud database wiped successfully");
+    } catch (error) {
+      console.error("Wipe failed:", error);
+      toast.error("Failed to wipe database");
+    }
+  },
+
+  completeEvent: async () => {
+    const { eventName } = get();
+    if (!eventName) return;
+    
+    try {
+      const tracksRef = collection(db, "tracks");
+      const q = query(tracksRef, where("eventName", "==", eventName));
+      const snapshot = await getDocs(q);
+      
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(d => {
+        batch.update(d.ref, { isCompleted: true });
+      });
+      await batch.commit();
+      
+      toast.success(`Event "${eventName}" marked as completed`);
+      get().logout();
+    } catch (error) {
+      console.error("Failed to complete event:", error);
+      toast.error("Failed to mark event as completed");
+    }
+  },
   
   createEventWithTracks: async (eventName) => {
     localStorage.setItem('eventName', eventName);
-    set({ eventName, riders: [], trackName: "NO TRACK", tracks: [] });
+    // Clear old data but don't set eventName yet to avoid premature redirect
+    set({ riders: [], trackName: "NO TRACK", tracks: [] });
 
     const tracksCollectionRef = collection(db, "tracks");
     const q = query(tracksCollectionRef, where("eventName", "==", eventName));
@@ -50,7 +156,7 @@ export const useRaceStore = create((set, get) => ({
       for (let i = 1; i <= DEFAULT_TRACK_COUNT; i++) {
         const trackName = `TRACK${i}`;
         const trackDocRef = doc(tracksCollectionRef);
-        batch.set(trackDocRef, { eventName, trackName, createdAt: serverTimestamp() });
+        batch.set(trackDocRef, { eventName, trackName, createdAt: serverTimestamp(), isCompleted: false });
         newTracks.push(trackName);
       }
       await batch.commit();
@@ -60,6 +166,7 @@ export const useRaceStore = create((set, get) => ({
       const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
       
       set({ 
+        eventName, // Set eventName here at the end
         tracks: newTracks, 
         trackName: firstTrack,
         activeRaceId: `${formattedEvent}_${formattedTrack}`
@@ -72,6 +179,7 @@ export const useRaceStore = create((set, get) => ({
       const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
 
       set({ 
+        eventName, // Set eventName here at the end
         tracks: existingTracks, 
         trackName: firstTrack,
         activeRaceId: `${formattedEvent}_${formattedTrack}`
@@ -94,7 +202,8 @@ export const useRaceStore = create((set, get) => ({
         await addDoc(tracksRef, { 
           eventName, 
           trackName: track, 
-          createdAt: serverTimestamp() 
+          createdAt: serverTimestamp(),
+          isCompleted: false 
         });
         
         // Update local tracks array
@@ -254,6 +363,25 @@ addRider: async (riderData) => {
     } catch (error) {
       console.error("Error deleting all riders:", error);
       toast.error("Failed to delete riders");
+    }
+  },
+  deleteAllEventRiders: async () => {
+    const { eventName } = get();
+    if (!eventName) return;
+
+    try {
+      const ridersRef = collection(db, "riders");
+      const q = query(ridersRef, where("eventName", "==", eventName));
+      const snapshot = await getDocs(q);
+      
+      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      set({ riders: [] });
+      toast.success(`All riders deleted for event: ${eventName}`);
+    } catch (error) {
+      console.error("Error deleting all event riders:", error);
+      toast.error("Failed to delete event riders");
     }
   },
   initAuth: async () => {

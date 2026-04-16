@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Clock, Wifi, WifiOff, Play, Flag, Trophy, File, Share2, LogOut, Menu, X } from "lucide-react";
 import { RaceClock } from "./RaceClock";
 import { SyncButton } from "./starter/SyncButton";
+import ConfirmDialog from "./ConfirmDialog";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const confirmDialog = useRef(null);
   
   const isOnline = useRaceStore((state) => state.isOnline);
   const trackName = useRaceStore((state) => state.trackName);
@@ -16,12 +18,24 @@ const Header = () => {
   const setTrack = useRaceStore((state) => state.setTrack);
   const eventName = useRaceStore((state) => state.eventName);
   const logout = useRaceStore((state) => state.logout);
+  const completeEvent = useRaceStore((state) => state.completeEvent);
 
   const isActive = (path) => location.pathname === path;
 
   const handleNav = (path) => {
     navigate(path);
     setIsMenuOpen(false);
+  };
+
+  const handleExit = () => {
+    confirmDialog.current.open({
+      title: "Exit Event",
+      message: "Do you want to mark this event as COMPLETED? It will no longer show up as a live event on the login screen.",
+      onConfirm: () => completeEvent(),
+      onCancel: () => logout(),
+      confirmLabel: "YES, COMPLETE",
+      cancelLabel: "NO, JUST EXIT"
+    });
   };
   
   const shareUrl = eventName && trackName && trackName !== 'NO TRACK' 
@@ -124,7 +138,7 @@ const Header = () => {
 
             {/* Exit Button */}
             <button 
-              onClick={logout}
+              onClick={handleExit}
               className="font-bold text-slate-400 hover:text-red-500 flex items-center justify-center gap-1.5 p-2 rounded-lg hover:bg-slate-800/50"
               title="Exit Event"
             >
@@ -137,6 +151,7 @@ const Header = () => {
           </div>
         </div>
       </div>
+      <ConfirmDialog ref={confirmDialog} />
     </header>
   );
 };
