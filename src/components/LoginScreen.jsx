@@ -207,7 +207,7 @@ return (
                   value={input}
                   onChange={(e) => setInput(e.target.value.toUpperCase())}
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input 
                     className="flex-1 bg-white border border-blue-100 rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="Set PIN (Optional)"
@@ -217,7 +217,7 @@ return (
                   />
                   <button 
                     onClick={() => handleStart(input, pin)}
-                    className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                    className="bg-blue-600 text-white p-4 sm:px-8 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                   >
                     CREATE
                   </button>
