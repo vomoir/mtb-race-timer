@@ -112,6 +112,8 @@ export const RiderImporter = () => {
     toast.success("Demo data loaded!");
   };
 
+  const existingCategories = [...new Set(riders.map(r => r.category).filter(Boolean))].sort();
+
   return (
     <Card className="p-4 sm:p-8 space-y-4 sm:space-y-8 max-w-2xl mx-auto">      
       <div>
@@ -262,10 +264,16 @@ export const RiderImporter = () => {
             <input
               name="category"
               type="text"
+              list="category-list"
               required
               className="mt-1 block w-full border rounded-lg px-3 py-2"
               placeholder="e.g. B Grade Men"
             />
+            <datalist id="category-list">
+              {existingCategories.map(cat => (
+                <option key={cat} value={cat} />
+              ))}
+            </datalist>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
