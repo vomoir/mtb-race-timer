@@ -121,6 +121,17 @@ const LoginScreen = () => {
     }
   };
 
+  const handleDeleteAllEvents = () => {
+    confirmDialog.current.open({
+      title: "⚠️ DELETE ALL CLOUD DATA",
+      message: "This will permanently delete ALL events, riders, and results from the cloud database. This cannot be undone.",
+      onConfirm: async () => {
+        await deleteAllEvents();
+        fetchLiveEvents(); // Refresh list
+      }
+    });
+  };
+
 return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl">

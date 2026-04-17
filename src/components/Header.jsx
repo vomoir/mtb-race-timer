@@ -117,8 +117,7 @@ const Header = () => {
                 id="trackSelect"
                 value={trackName}
                 onChange={(e) => setTrack(e.target.value)}
-                disabled={!isAdmin}
-                className="flex-grow bg-slate-700/80 border border-slate-600 rounded px-2 py-1 font-mono text-orange-400 focus:border-orange-500 outline-none uppercase min-w-0 disabled:opacity-50"
+                className="flex-grow bg-slate-700/80 border border-slate-600 rounded px-2 py-1 font-mono text-orange-400 focus:border-orange-500 outline-none uppercase min-w-0"
               >
                 <option value="NO TRACK">NO TRACK</option>
                 {tracks?.map(t => <option key={t} value={t}>{t}</option>)}
@@ -141,8 +140,9 @@ const Header = () => {
             {/* Exit Button */}
             <button 
               onClick={handleExit}
-              className="font-bold text-slate-400 hover:text-red-500 flex items-center justify-center gap-1.5 p-2 rounded-lg hover:bg-slate-800/50"
-              title="Exit Event"
+              disabled={!isAdmin}
+              className="font-bold text-slate-400 hover:text-red-500 flex items-center justify-center gap-1.5 p-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
+              title={isAdmin ? "Exit Event" : "Exit disabled for guests"}
             >
               <LogOut size={14} />
               <span>EXIT</span>
