@@ -37,60 +37,88 @@ export const useRaceStore = create((set, get) => ({
   trackName: "NO TRACK",
   tracks: [],
   setTracks: (tracks) => set({ tracks }),
+  isAdmin: localStorage.getItem('isAdmin') === 'true',
+  setAdmin: (val) => {
+    localStorage.setItem('isAdmin', val);
+    set({ isAdmin: val });
+  },
   liveEvents: [],
-  fetchLiveEvents: async () => {
-    try {
-      const tracksRef = collection(db, "tracks");
-      // Get tracks from the last 24 hours
-      const yesterday = new Date();
-      yesterday.setHours(yesterday.getHours() - 24);
-      
-      const q = query(
-        tracksRef, 
-        where("createdAt", ">", yesterday),
-        orderBy("createdAt", "desc")
-      );
-      
-      const snapshot = await getDocs(q);
+  unsubscribeLiveEvents: null,
+  fetchLiveEvents: () => {
+    // Clear previous listener if exists
+    const prevUnsub = get().unsubscribeLiveEvents;
+    if (prevUnsub) prevUnsub();
+
+    const tracksRef = collection(db, "tracks");
+    const yesterday = new Date();
+    yesterday.setHours(yesterday.getHours() - 24);
+    
+    const q = query(
+      tracksRef, 
+      where("createdAt", ">", yesterday),
+      orderBy("createdAt", "desc")
+    );
+    
+    console.log("📡 Subscribing to live events...");
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       if (snapshot.empty) {
         set({ liveEvents: [] });
         return;
       }
 
-      // We only ever want ONE live event. Check the most recent event first.
       const activeTracks = snapshot.docs.filter(d => !d.data().isCompleted);
+      
       if (activeTracks.length === 0) {
         set({ liveEvents: [] });
         return;
       }
 
-      const recentEvents = [...new Set(activeTracks.map(doc => doc.data().eventName))];
-      const latestEventName = recentEvents[0];
-
-      // Check if this latest event is "Completed"
-      // Definition: Has riders, but NONE are WAITING or ON_TRACK
-      const ridersRef = collection(db, "riders");
-      const ridersSnap = await getDocs(query(ridersRef, where("eventName", "==", latestEventName)));
+      // Filter unique event names
+      const eventsMap = new Map();
+      activeTracks.forEach(doc => {
+        const data = doc.data();
+        if (!eventsMap.has(data.eventName)) {
+          eventsMap.set(data.eventName, {
+            name: data.eventName,
+            isPrivate: data.isPrivate || false,
+            createdAt: data.createdAt
+          });
+        }
+      });
       
-      if (ridersSnap.empty) {
-        // New event with no riders yet is considered Live
-        set({ liveEvents: [latestEventName] });
-        return;
+      const liveEventsList = Array.from(eventsMap.values());
+      
+      // OPTIONAL: Deep check for active riders to auto-hide empty/finished events
+      // This is slightly expensive but very robust
+      const ridersRef = collection(db, "riders");
+      const filteredLiveEvents = [];
+      
+      for (const event of liveEventsList) {
+        const ridersSnap = await getDocs(query(ridersRef, where("eventName", "==", event.name)));
+        
+        // If no riders yet, it's a fresh live event
+        if (ridersSnap.empty) {
+          filteredLiveEvents.push(event);
+          continue;
+        }
+
+        // If it has riders, check if any are still "active"
+        const hasActiveRiders = ridersSnap.docs.some(d => 
+          ["WAITING", "ON_TRACK"].includes(d.data().status)
+        );
+
+        if (hasActiveRiders) {
+          filteredLiveEvents.push(event);
+        }
       }
 
-      const hasActiveRiders = ridersSnap.docs.some(d => 
-        ["WAITING", "ON_TRACK"].includes(d.data().status)
-      );
-
-      if (hasActiveRiders) {
-        set({ liveEvents: [latestEventName] });
-      } else {
-        // If the latest is completed, we don't show any live events
-        set({ liveEvents: [] });
-      }
-    } catch (error) {
+      set({ liveEvents: filteredLiveEvents });
+    }, (error) => {
       console.error("Error fetching live events:", error);
-    }
+    });
+
+    set({ unsubscribeLiveEvents: unsubscribe });
+    return unsubscribe;
   },
   
   deleteAllEvents: async () => {
@@ -103,14 +131,14 @@ export const useRaceStore = create((set, get) => ({
         getDocs(tracksRef)
       ]);
 
-      const deletePromises = [
-        ...ridersSnap.docs.map(d => deleteDoc(d.ref)),
-        ...tracksSnap.docs.map(d => deleteDoc(d.ref))
-      ];
-
-      await Promise.all(deletePromises);
+      const batch = writeBatch(db);
+      ridersSnap.docs.forEach(d => batch.delete(d.ref));
+      tracksSnap.docs.forEach(d => batch.delete(d.ref));
+      
+      await batch.commit();
       
       set({ liveEvents: [], riders: [], tracks: [], eventName: "", trackName: "NO TRACK" });
+      get().setAdmin(false);
       toast.success("Cloud database wiped successfully");
     } catch (error) {
       console.error("Wipe failed:", error);
@@ -119,8 +147,11 @@ export const useRaceStore = create((set, get) => ({
   },
 
   completeEvent: async () => {
-    const { eventName } = get();
-    if (!eventName) return;
+    const { eventName, isAdmin } = get();
+    if (!eventName || !isAdmin) {
+      toast.error("Unauthorized: Only admins can complete events.");
+      return;
+    }
     
     try {
       const tracksRef = collection(db, "tracks");
@@ -141,7 +172,7 @@ export const useRaceStore = create((set, get) => ({
     }
   },
   
-  createEventWithTracks: async (eventName) => {
+  createEventWithTracks: async (eventName, pin = "") => {
     localStorage.setItem('eventName', eventName);
     // Clear old data but don't set eventName yet to avoid premature redirect
     set({ riders: [], trackName: "NO TRACK", tracks: [] });
@@ -153,10 +184,19 @@ export const useRaceStore = create((set, get) => ({
     if (existingTracksSnapshot.empty) {
       const batch = writeBatch(db);
       const newTracks = [];
+      const isPrivate = pin.length > 0;
+      
       for (let i = 1; i <= DEFAULT_TRACK_COUNT; i++) {
         const trackName = `TRACK${i}`;
         const trackDocRef = doc(tracksCollectionRef);
-        batch.set(trackDocRef, { eventName, trackName, createdAt: serverTimestamp(), isCompleted: false });
+        batch.set(trackDocRef, { 
+          eventName, 
+          trackName, 
+          createdAt: serverTimestamp(), 
+          isCompleted: false,
+          isPrivate,
+          pin: pin // In a real app, hash this!
+        });
         newTracks.push(trackName);
       }
       await batch.commit();
@@ -166,37 +206,95 @@ export const useRaceStore = create((set, get) => ({
       const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
       
       set({ 
-        eventName, // Set eventName here at the end
+        eventName, 
         tracks: newTracks, 
         trackName: firstTrack,
         activeRaceId: `${formattedEvent}_${formattedTrack}`
       });
+      get().setAdmin(true); // Creator is always admin
       toast.success(`${DEFAULT_TRACK_COUNT} tracks created for event ${eventName}`);
     } else {
+      const data = existingTracksSnapshot.docs[0].data();
+      const isPrivate = data.isPrivate || false;
+      const correctPin = data.pin || "";
+
       const existingTracks = existingTracksSnapshot.docs.map(doc => doc.data().trackName).sort();
       const firstTrack = existingTracks[0];
       const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
       const formattedTrack = firstTrack.replace(/\s+/g, '-').toUpperCase();
 
       set({ 
-        eventName, // Set eventName here at the end
+        eventName, 
         tracks: existingTracks, 
         trackName: firstTrack,
         activeRaceId: `${formattedEvent}_${formattedTrack}`
       });
+
+      // If it's private and we don't have a valid pin session, we are NOT admin
+      if (isPrivate) {
+        // If pin matches or we are already admin for this event name in storage
+        if (pin === correctPin && pin !== "") {
+          get().setAdmin(true);
+        } else {
+          // Check if we were already admin for this event (persisted in localStorage)
+          const savedAdminEvent = localStorage.getItem('adminEventName');
+          if (savedAdminEvent === eventName) {
+            get().setAdmin(true);
+          } else {
+            get().setAdmin(false);
+          }
+        }
+      } else {
+        get().setAdmin(true); // Public events allow everyone to be admin for now, 
+                             // or we could change this to default false.
+                             // User said "Anyone with link can join... introduce security"
+                             // so maybe public events should also be read-only by default?
+                             // Let's make it so you MUST have a pin to be admin if private.
+      }
     }
+    
+    if (get().isAdmin) {
+      localStorage.setItem('adminEventName', eventName);
+    }
+    
     // Refresh riders for the initial track
     get().fetchRidersForSession();
   },
+
+  verifyPin: async (eventName, pin) => {
+    try {
+      const tracksRef = collection(db, "tracks");
+      const q = query(tracksRef, where("eventName", "==", eventName), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) return false;
+      
+      const data = snapshot.docs[0].data();
+      if (data.pin === pin) {
+        get().setAdmin(true);
+        localStorage.setItem('adminEventName', eventName);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Pin verification failed:", error);
+      return false;
+    }
+  },
+
   // setTrackName: (name) => set({ trackName: name }), 
   setTrack: async (track) => {
-    const { eventName, tracks } = get();
+    const { eventName, tracks, isAdmin } = get();
     const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
     const formattedTrack = track.replace(/\s+/g, '-').toUpperCase();
     const newActiveRaceId = `${formattedEvent}_${formattedTrack}`;
     
-    // 1. Check if it's a new track that needs to be persisted
+    // 1. Check if it's a new track that needs to be persisted (Admins only)
     if (track && !tracks.includes(track)) {
+      if (!isAdmin) {
+        toast.error("Guest access: Cannot create new tracks.");
+        return;
+      }
       try {
         const tracksRef = collection(db, "tracks");
         await addDoc(tracksRef, { 
@@ -237,7 +335,10 @@ export const useRaceStore = create((set, get) => ({
   },
   // Helper to "Log Out" / Switch Event
   logout: async () => {
-    set({ eventName: "", riders: [] });
+    localStorage.removeItem('eventName');
+    localStorage.removeItem('adminEventName');
+    get().setAdmin(false);
+    set({ eventName: "", riders: [], trackName: "NO TRACK" });
     await signOut(auth);
     set({ user: null });
   },
@@ -355,8 +456,9 @@ addRider: async (riderData) => {
       const q = query(ridersRef, where("raceId", "==", activeRaceId));
       const snapshot = await getDocs(q);
       
-      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
-      await Promise.all(deletePromises);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
 
       set({ riders: [] });
       toast.success("All riders deleted for this session");
@@ -374,8 +476,9 @@ addRider: async (riderData) => {
       const q = query(ridersRef, where("eventName", "==", eventName));
       const snapshot = await getDocs(q);
       
-      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
-      await Promise.all(deletePromises);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
 
       set({ riders: [] });
       toast.success(`All riders deleted for event: ${eventName}`);

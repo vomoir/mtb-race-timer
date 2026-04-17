@@ -12,13 +12,9 @@ const Header = () => {
   const location = useLocation();
   const confirmDialog = useRef(null);
   
-  const isOnline = useRaceStore((state) => state.isOnline);
-  const trackName = useRaceStore((state) => state.trackName);
-  const tracks = useRaceStore((state) => state.tracks);
-  const setTrack = useRaceStore((state) => state.setTrack);
-  const eventName = useRaceStore((state) => state.eventName);
-  const logout = useRaceStore((state) => state.logout);
-  const completeEvent = useRaceStore((state) => state.completeEvent);
+  const { 
+    isOnline, trackName, tracks, setTrack, eventName, logout, completeEvent, isAdmin 
+  } = useRaceStore();
 
   const isActive = (path) => location.pathname === path;
 
@@ -42,6 +38,14 @@ const Header = () => {
     ? `${window.location.origin}/?event=${encodeURIComponent(eventName)}&track=${encodeURIComponent(trackName)}`
     : null;
 
+  // Filter tabs based on admin status
+  const navTabs = [
+    { path: "/registration", label: "Register", icon: File, color: "green", adminOnly: true },
+    { path: "/starter", label: "Starter", icon: Play, color: "green", adminOnly: true },
+    { path: "/finish", label: "Finisher", icon: Flag, color: "red", adminOnly: true },
+    { path: "/results", label: "Results", icon: Trophy, color: "blue", adminOnly: false },
+  ].filter(tab => !tab.adminOnly || isAdmin);
+
   return (
     <header className="bg-slate-900 text-white sticky top-0 z-50 shadow-lg font-sans">
       <div className="max-w-4xl mx-auto px-2">
@@ -50,6 +54,7 @@ const Header = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-base sm:text-lg font-bold truncate">
               {eventName || "No Event"}
+              {!isAdmin && <span className="ml-2 text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded uppercase tracking-tighter">Read Only</span>}
               {trackName && trackName !== "NO TRACK" && (
                 <span className="text-slate-400 font-medium"> / {trackName}</span>
               )}
@@ -73,13 +78,8 @@ const Header = () => {
         {/* --- Collapsible Menu --- */}
         <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isMenuOpen ? 'max-h-screen' : 'max-h-0'} sm:max-h-full sm:overflow-visible`}>
           {/* --- Navigation Tabs --- */}
-          <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-800/50 rounded-lg p-1">
-            {[
-              { path: "/registration", label: "Register", icon: File, color: "green" },
-              { path: "/starter", label: "Starter", icon: Play, color: "green" },
-              { path: "/finish", label: "Finisher", icon: Flag, color: "red" },
-              { path: "/results", label: "Results", icon: Trophy, color: "blue" },
-            ].map(({ path, label, icon: Icon, color }) => (
+          <nav className={`grid gap-1 bg-slate-800/50 rounded-lg p-1 ${navTabs.length > 1 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1'}`}>
+            {navTabs.map(({ path, label, icon: Icon, color }) => (
               <button
                 key={path}
                 onClick={() => handleNav(path)}
@@ -122,25 +122,27 @@ const Header = () => {
                 <option value="NO TRACK">NO TRACK</option>
                 {tracks?.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <SyncButton />
+              {isAdmin && <SyncButton />}
               {shareUrl && (
-                <a 
-                  href={shareUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Share Finisher Link"
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    toast.success("Link copied to clipboard!");
+                  }}
+                  title="Share Event Link"
                   className="p-2 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition-colors shrink-0"
                 >
                   <Share2 size={16} />
-                </a>
+                </button>
               )}
             </div>
 
             {/* Exit Button */}
             <button 
               onClick={handleExit}
-              className="font-bold text-slate-400 hover:text-red-500 flex items-center justify-center gap-1.5 p-2 rounded-lg hover:bg-slate-800/50"
-              title="Exit Event"
+              disabled={!isAdmin}
+              className="font-bold text-slate-400 hover:text-red-500 flex items-center justify-center gap-1.5 p-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
+              title={isAdmin ? "Exit Event" : "Exit disabled for guests"}
             >
               <LogOut size={14} />
               <span>EXIT</span>

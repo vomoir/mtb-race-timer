@@ -8,10 +8,9 @@ import toast from "react-hot-toast";
 
 const LoginScreen = () => {
   const [input, setInput] = useState('');
-  const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem('eventHistory');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [pin, setPin] = useState('');
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pendingEvent, setPendingEvent] = useState(null);
   
   const { 
     createEventWithTracks, 
@@ -21,7 +20,8 @@ const LoginScreen = () => {
     liveEvents,
     fetchLiveEvents,
     deleteAllEvents,
-    setEvent
+    verifyPin,
+    isAdmin
   } = useRaceStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -38,6 +38,15 @@ const LoginScreen = () => {
     if (eventNameFromUrl) {
       const initDeepLink = async () => {
         const upperEventName = eventNameFromUrl.toUpperCase();
+        
+        // Check if event is private
+        const eventData = liveEvents.find(e => e.name === upperEventName);
+        if (eventData?.isPrivate && !isAdmin) {
+          setPendingEvent({ name: upperEventName, track: trackNameFromUrl });
+          setShowPinInput(true);
+          return;
+        }
+
         await createEventWithTracks(upperEventName);
         syncEventRiders(upperEventName);
 
@@ -61,17 +70,25 @@ const LoginScreen = () => {
       };
       initDeepLink();
     }
-  }, [searchParams, navigate, createEventWithTracks, setTrack, syncEventRiders, fetchEventResults]);
+  }, [searchParams, navigate, createEventWithTracks, setTrack, syncEventRiders, fetchEventResults, liveEvents, isAdmin]);
 
-  const handleStart = (name) => {
+  const handleStart = async (name, eventPin = "") => {
     if (!name) return;
     if (name.length < 3) {
       toast.error("Event name must be at least 3 characters long");
       return;
     }
     let eventName = name.toUpperCase();
-    const dateRegex = /\d{4}-\d{2}-\d{2}$/;
+    
+    // Check if this is an existing private event
+    const eventData = liveEvents.find(e => e.name === eventName);
+    if (eventData?.isPrivate && eventPin === "" && !isAdmin) {
+      setPendingEvent({ name: eventName });
+      setShowPinInput(true);
+      return;
+    }
 
+    const dateRegex = /\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(eventName)) {
         const today = new Date();
         const year = today.getFullYear();
@@ -81,31 +98,27 @@ const LoginScreen = () => {
         eventName = `${eventName} ${dateStamp}`;
     }
     
-    // Update history list (prevent duplicates)
-    const newHistory = [eventName, ...history.filter(h => h !== eventName)].slice(0, 5);
-    localStorage.setItem('eventHistory', JSON.stringify(newHistory));    
-    
-    createEventWithTracks(eventName); 
+    await createEventWithTracks(eventName, eventPin); 
     syncEventRiders(eventName);
+    navigate('/registration');
   };
 
-  const clearHistory = () => {
-    localStorage.removeItem('eventHistory');
-    setHistory([]);
-  };
-
-  const removeEvent = (e, name) => {
-    e.stopPropagation();
-    const newHistory = history.filter(h => h !== name);
-    localStorage.setItem('eventHistory', JSON.stringify(newHistory));
-    setHistory(newHistory);
-  };
-
-  const shareEvent = (e, name) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/?event=${encodeURIComponent(name)}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Event link copied to clipboard!");
+  const handlePinSubmit = async () => {
+    if (!pendingEvent) return;
+    
+    const isCorrect = await verifyPin(pendingEvent.name, pin);
+    if (isCorrect || pin === "") { // Allow empty pin for guest access
+      await createEventWithTracks(pendingEvent.name, pin);
+      syncEventRiders(pendingEvent.name);
+      if (pendingEvent.track) setTrack(pendingEvent.track);
+      
+      setShowPinInput(false);
+      setPendingEvent(null);
+      setPin('');
+      navigate('/registration');
+    } else {
+      toast.error("Incorrect PIN");
+    }
   };
 
   const handleDeleteAllEvents = () => {
@@ -125,104 +138,107 @@ return (
         <h1 className="text-2xl font-black text-slate-900 mb-2">Race Timer Pro</h1>
         <p className="text-slate-500 mb-8 italic">"Ready for the next stage?"</p>
 
-        {/* Live Now Section */}
-        {liveEvents.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Radio size={14} className="text-red-500 animate-pulse" /> Live Now
-            </h2>
-            <div className="space-y-2">
-              {liveEvents.map(event => (
-                <button
-                  key={event}
-                  onClick={() => handleStart(event)}
-                  className="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl transition-all text-left group"
-                >
-                  <span className="font-bold text-slate-700">{event}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-red-500 uppercase tracking-tighter">Join Live</span>
-                    <ArrowRight size={18} className="text-red-300 group-hover:text-red-500" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Existing Events Section */}
-        {history.length > 0 && (
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <History size={14} /> Local History
-              </h2>
+        {showPinInput ? (
+          <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+            <h2 className="text-lg font-bold text-slate-800">Enter PIN for {pendingEvent?.name}</h2>
+            <p className="text-sm text-slate-500">This event is private. Enter the 4-digit PIN to gain timing access, or leave blank for read-only results.</p>
+            <input 
+              type="password"
+              className="w-full bg-slate-100 border-none rounded-xl p-4 font-mono text-2xl text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="****"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
               <button 
-                onClick={clearHistory}
-                className="text-xs text-red-400 hover:text-red-600 font-bold hover:underline transition-colors"
+                onClick={() => { setShowPinInput(false); setPin(''); }}
+                className="flex-1 bg-slate-200 text-slate-700 p-4 rounded-xl font-bold hover:bg-slate-300 transition-colors"
               >
-                CLEAR LIST
+                BACK
+              </button>
+              <button 
+                onClick={handlePinSubmit}
+                className="flex-2 bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700 transition-colors px-8"
+              >
+                JOIN EVENT
               </button>
             </div>
-            <div className="space-y-2">
-              {history.map(prevEvent => (
-                <div key={prevEvent} className="flex gap-2 group">
-                  <button
-                    onClick={() => handleStart(prevEvent)}
-                    className="flex-1 flex items-center justify-between p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left"
+          </div>
+        ) : (
+          <>
+            {/* Live Now Section */}
+            {liveEvents.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Radio size={14} className="text-red-500 animate-pulse" /> Live Now
+                </h2>
+                <div className="space-y-2">
+                  {liveEvents.map(event => (
+                    <button
+                      key={event.name}
+                      onClick={() => handleStart(event.name)}
+                      className="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl transition-all text-left group"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700">{event.name}</span>
+                        {event.isPrivate && <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 uppercase tracking-tighter mt-0.5">PRIVATE EVENT</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-red-500 uppercase tracking-tighter">Join Live</span>
+                        <ArrowRight size={18} className="text-red-300 group-hover:text-red-500" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Create New Section */}
+            <div className="mb-8 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+              <h2 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <PlusCircle size={14} /> Start New Event
+              </h2>
+              <div className="space-y-3">
+                <input 
+                  className="w-full bg-white border border-blue-100 rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Event Name (e.g. Gravity Cup)"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value.toUpperCase())}
+                />
+                <div className="flex gap-2">
+                  <input 
+                    className="flex-1 bg-white border border-blue-100 rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Set PIN (Optional)"
+                    maxLength={4}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                  />
+                  <button 
+                    onClick={() => handleStart(input, pin)}
+                    className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                   >
-                    <span className="font-bold text-slate-700">{prevEvent}</span>
-                    <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500" />
-                  </button>
-                  <button
-                    onClick={(e) => shareEvent(e, prevEvent)}
-                    className="p-4 text-slate-300 hover:text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl transition-all"
-                    title="Share Event Link"
-                  >
-                    <Share2 size={18} />
-                  </button>
-                  <button
-                    onClick={(e) => removeEvent(e, prevEvent)}
-                    className="p-4 text-slate-300 hover:text-red-500 hover:bg-red-100 border border-transparent hover:border-red-100 rounded-xl transition-all"
-                    title="Remove from history"
-                  >
-                    <Trash2 size={18} />
+                    CREATE
                   </button>
                 </div>
-              ))}
+                <p className="text-[10px] text-blue-400 font-bold text-center px-4 uppercase tracking-tighter">
+                  Setting a PIN prevents unauthorized timing and changes.
+                </p>
+              </div>
             </div>
-          </div>
+
+            {/* Global Admin Section */}
+            <div className="pt-6 border-t border-slate-100">
+               <button 
+                onClick={handleDeleteAllEvents}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100"
+              >
+                <AlertTriangle size={14} /> Delete ALL Events from Cloud
+              </button>
+            </div>
+          </>
         )}
-
-        {/* Create New Section */}
-        <div className="mb-8">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <PlusCircle size={14} /> Start New Event
-          </h2>
-          <div className="flex flex-col md:flex-row gap-2">
-            <input 
-              className="flex-1 w-full bg-slate-100 border-none rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="e.g. Dungog Day 2"
-              value={input}
-              onChange={(e) => setInput(e.target.value.toUpperCase())}
-            />
-            <button 
-              onClick={() => handleStart(input)}
-              className="bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700 transition-colors"
-            >
-              GO
-            </button>
-          </div>
-        </div>
-
-        {/* Global Admin Section */}
-        <div className="pt-6 border-t border-slate-100">
-           <button 
-            onClick={handleDeleteAllEvents}
-            className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100"
-          >
-            <AlertTriangle size={14} /> Delete ALL Events from Cloud
-          </button>
-        </div>
 
         <div className="mt-8 flex justify-center">
           <InstallButton />

@@ -22,7 +22,8 @@ export default function App() {
     tick, 
     initAuth, 
     initAuthListener, 
-    setIsOnline 
+    setIsOnline,
+    isAdmin
   } = useRaceStore();
 
   // 1. Auth & Connectivity Listeners (Stay the same)
@@ -63,24 +64,24 @@ export default function App() {
       {eventName && <Header />}
 
       <Routes>
-        {/* Home Path: If no event, show Login. If event exists, redirect to registration */}
+        {/* Home Path: If no event, show Login. If event exists, redirect based on admin status */}
         <Route 
           path="/" 
-          element={!eventName ? <LoginScreen /> : <Navigate to="/registration" />} 
+          element={!eventName ? <LoginScreen /> : (isAdmin ? <Navigate to="/registration" /> : <Navigate to="/results" />)} 
         />
         
-        {/* Protected Routes: Redirect to "/" if no event name exists */}
+        {/* Protected Routes: Redirect to "/" if no event name exists, or to results if not admin */}
         <Route 
           path="/registration" 
-          element={eventName ? <RiderRegistration /> : <Navigate to="/" />} 
+          element={eventName ? (isAdmin ? <RiderRegistration /> : <Navigate to="/results" />) : <Navigate to="/" />} 
         />
         <Route 
           path="/starter" 
-          element={eventName ? <StarterComponent /> : <Navigate to="/" />} 
+          element={eventName ? (isAdmin ? <StarterComponent /> : <Navigate to="/results" />) : <Navigate to="/" />} 
         />
         <Route 
           path="/finish" 
-          element={eventName ? <FinishLineComponent /> : <Navigate to="/" />} 
+          element={eventName ? (isAdmin ? <FinishLineComponent /> : <Navigate to="/results" />) : <Navigate to="/" />} 
         />
         <Route 
           path="/results" 
