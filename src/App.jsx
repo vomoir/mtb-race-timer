@@ -7,7 +7,8 @@ import Header from "./components/Header";
 import StarterComponent from "./components/Starter";
 import FinishLineComponent from "./components/FinishLine";
 import ResultsComponent from "./components/Results";
-import {RiderRegistration } from './components/RiderRegistration';
+import { RiderRegistration } from './components/RiderRegistration';
+import Archives from "./components/Archives";
 
 // import { getAnalytics } from "firebase/analytics";
 // import { auth } from "../modules/firebase";
@@ -86,6 +87,10 @@ export default function App() {
         <Route 
           path="/results" 
           element={eventName ? <ResultsComponent /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/archives" 
+          element={<Archives />} 
         />
       </Routes>
 

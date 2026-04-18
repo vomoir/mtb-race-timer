@@ -1,10 +1,10 @@
 import React, { useState, useRef } from "react";
 import { useRaceStore } from "../store/raceStore";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Clock, Wifi, WifiOff, Play, Flag, Trophy, File, Share2, LogOut, Menu, X } from "lucide-react";
+import { Clock, Wifi, WifiOff, Play, Flag, Trophy, File, LogOut, Menu, X, History } from "lucide-react";
 import { RaceClock } from "./RaceClock";
-import { SyncButton } from "./starter/SyncButton";
 import ConfirmDialog from "./ConfirmDialog";
+import toast from "react-hot-toast";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,10 +33,6 @@ const Header = () => {
       cancelLabel: "NO, JUST EXIT"
     });
   };
-  
-  const shareUrl = eventName && trackName && trackName !== 'NO TRACK' 
-    ? `${window.location.origin}/?event=${encodeURIComponent(eventName)}&track=${encodeURIComponent(trackName)}`
-    : null;
 
   // Filter tabs based on admin status
   const navTabs = [
@@ -44,6 +40,7 @@ const Header = () => {
     { path: "/starter", label: "Starter", icon: Play, color: "green", adminOnly: true },
     { path: "/finish", label: "Finisher", icon: Flag, color: "red", adminOnly: true },
     { path: "/results", label: "Results", icon: Trophy, color: "blue", adminOnly: false },
+    { path: "/archives", label: "Archives", icon: History, color: "slate", adminOnly: false },
   ].filter(tab => !tab.adminOnly || isAdmin);
 
   return (
@@ -78,12 +75,18 @@ const Header = () => {
         {/* --- Collapsible Menu --- */}
         <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isMenuOpen ? 'max-h-screen' : 'max-h-0'} sm:max-h-full sm:overflow-visible`}>
           {/* --- Navigation Tabs --- */}
-          <nav className={`grid gap-1 bg-slate-800/50 rounded-lg p-1 ${navTabs.length > 1 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1'}`}>
+          <nav className={`grid gap-1 bg-slate-800/50 rounded-lg p-1 ${
+            navTabs.length <= 2 
+              ? 'grid-cols-2' 
+              : navTabs.length <= 3 
+                ? 'grid-cols-3' 
+                : 'grid-cols-3 sm:flex sm:flex-wrap sm:justify-center'
+          }`}>
             {navTabs.map(({ path, label, icon: Icon, color }) => (
               <button
                 key={path}
                 onClick={() => handleNav(path)}
-                className={`flex items-center justify-center gap-2 py-2.5 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap ${
+                className={`flex items-center justify-center gap-2 py-2.5 sm:py-3 px-2 rounded-md transition-all font-semibold text-xs sm:text-sm whitespace-nowrap sm:min-w-[100px] ${
                   isActive(path)
                     ? `bg-${color}-600 text-white shadow-md`
                     : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
@@ -122,19 +125,6 @@ const Header = () => {
                 <option value="NO TRACK">NO TRACK</option>
                 {tracks?.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              {isAdmin && <SyncButton />}
-              {shareUrl && (
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareUrl);
-                    toast.success("Link copied to clipboard!");
-                  }}
-                  title="Share Event Link"
-                  className="p-2 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition-colors shrink-0"
-                >
-                  <Share2 size={16} />
-                </button>
-              )}
             </div>
 
             {/* Exit Button */}
