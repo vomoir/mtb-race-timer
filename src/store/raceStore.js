@@ -318,6 +318,37 @@ export const useRaceStore = create((set, get) => ({
     }
   },
 
+  isProcessingPayment: false,
+  processPayment: async (token, eventData) => {
+    set({ isProcessingPayment: true });
+    try {
+      // In a real implementation, you would call a Firebase Cloud Function here:
+      /*
+      const processPaymentFn = httpsCallable(functions, 'processSquarePayment');
+      const result = await processPaymentFn({
+        token,
+        amount: 2500, // $25.00
+        eventName: eventData.name
+      });
+      */
+      
+      // MOCK SUCCESS for demonstration
+      console.log("Simulating Square payment with token:", token);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Once payment is successful, create the event
+      await get().createEventWithTracks(eventData.name, eventData.pin);
+      toast.success("Payment successful! Event activated.");
+      return true;
+    } catch (error) {
+      console.error("Payment processing failed:", error);
+      toast.error("Payment failed. Please try again.");
+      return false;
+    } finally {
+      set({ isProcessingPayment: false });
+    }
+  },
+
   // setTrackName: (name) => set({ trackName: name }), 
   setTrack: async (track) => {
     const { eventName, tracks, isAdmin } = get();

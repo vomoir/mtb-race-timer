@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Clock, LogIn, Trophy, MapPin, ArrowRight, PlusCircle, History, Trash2, Share2, Radio, AlertTriangle } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
 import { InstallButton } from "./InstallButton";
+import SquarePayment from "./SquarePayment";
 import ConfirmDialog from "./ConfirmDialog";
 import toast from "react-hot-toast";
 
@@ -10,6 +11,7 @@ const LoginScreen = () => {
   const [input, setInput] = useState('');
   const [pin, setPin] = useState('');
   const [showPinInput, setShowPinInput] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [pendingEvent, setPendingEvent] = useState(null);
   
   const { 
@@ -20,6 +22,7 @@ const LoginScreen = () => {
     fetchLiveEvents,
     deleteAllEvents,
     verifyPin,
+    processPayment,
     isAdmin
   } = useRaceStore();
   const navigate = useNavigate();
@@ -78,14 +81,6 @@ const LoginScreen = () => {
     }
     let eventName = name.toUpperCase();
     
-    // Check if this is an existing private event
-    const eventData = liveEvents.find(e => e.name === eventName);
-    if (eventData?.isPrivate && eventPin === "" && !isAdmin) {
-      setPendingEvent({ name: eventName });
-      setShowPinInput(true);
-      return;
-    }
-
     const dateRegex = /\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(eventName)) {
         const today = new Date();
@@ -95,9 +90,32 @@ const LoginScreen = () => {
         const dateStamp = `${year}-${month}-${day}`;
         eventName = `${eventName} ${dateStamp}`;
     }
+
+    const eventData = liveEvents.find(e => e.name === eventName);
     
-    await createEventWithTracks(eventName, eventPin); 
-    navigate('/registration');
+    if (eventData) {
+      // Joining existing event
+      if (eventData.isPrivate && eventPin === "" && !isAdmin) {
+        setPendingEvent({ name: eventName });
+        setShowPinInput(true);
+        return;
+      }
+      await createEventWithTracks(eventName, eventPin); 
+      navigate('/registration');
+    } else {
+      // NEW Event - Trigger Payment
+      setPendingEvent({ name: eventName, pin: eventPin });
+      setShowPayment(true);
+    }
+  };
+
+  const handlePaymentSuccess = async (token) => {
+    const success = await processPayment(token, pendingEvent);
+    if (success) {
+      setShowPayment(false);
+      setPendingEvent(null);
+      navigate('/registration');
+    }
   };
 
   const handlePinSubmit = async () => {
@@ -161,6 +179,22 @@ return (
                 JOIN EVENT
               </button>
             </div>
+          </div>
+        ) : showPayment ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-slate-800">Activate "{pendingEvent?.name}"</h2>
+              <p className="text-sm text-slate-500 mt-1">One-time payment for full timing access.</p>
+            </div>
+            
+            <SquarePayment onPaymentSuccess={handlePaymentSuccess} amount={2500} />
+            
+            <button 
+              onClick={() => { setShowPayment(false); setPendingEvent(null); }}
+              className="w-full text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-slate-600 transition-colors"
+            >
+              Cancel and go back
+            </button>
           </div>
         ) : (
           <>
