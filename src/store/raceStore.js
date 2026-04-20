@@ -120,6 +120,42 @@ export const useRaceStore = create((set, get) => ({
     set({ unsubscribeLiveEvents: unsubscribe });
     return unsubscribe;
   },
+
+  archivedEvents: [],
+  fetchArchivedEvents: async () => {
+    try {
+      const tracksRef = collection(db, "tracks");
+      // Define Archived as events that have tracks or are just "old"
+      // For now, let's fetch ALL tracks and group them.
+      const snapshot = await getDocs(query(tracksRef, orderBy("createdAt", "desc")));
+      
+      const allTracks = snapshot.docs.map(d => d.data());
+      
+      // Group by event name
+      const eventGroups = allTracks.reduce((acc, track) => {
+        if (!acc[track.eventName]) {
+          acc[track.eventName] = {
+            name: track.eventName,
+            createdAt: track.createdAt?.toDate?.() || new Date(0),
+            isCompleted: true // Default to true, will be set to false if ANY track is not completed
+          };
+        }
+        if (!track.isCompleted) {
+          acc[track.eventName].isCompleted = false;
+        }
+        return acc;
+      }, {});
+
+      // Filter for events where ALL tracks are completed
+      const archived = Object.values(eventGroups)
+        .filter(e => e.isCompleted)
+        .sort((a, b) => b.createdAt - a.createdAt);
+
+      set({ archivedEvents: archived });
+    } catch (error) {
+      console.error("Error fetching archived events:", error);
+    }
+  },
   
   deleteAllEvents: async () => {
     try {
@@ -889,35 +925,11 @@ fetchRidersForSession: async () => {
     
     console.log(`📡 Loaded ${loadedRiders.length} riders for event: ${eventName}`);
   } catch (error) {
-    console.error("Error fetching event riders:", error);
+  console.error("Error fetching event riders:", error);
   }
-},
-syncEventRiders: async (eventName) => {
-  set({ riders: [] }); // Clear current riders to avoid ghost data
-  const ridersRef = collection(db, "riders");
-  const q = query(
-    ridersRef, 
-    where("eventName", "==", eventName),
-    where("status", "in", ["WAITING", "ON_TRACK"])
-  );
+  },
+  fetchEventResults: async (eventName) => {
 
-  try {
-    const querySnapshot = await getDocs(q);
-    const loadedRiders = querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id,
-    }));
-    
-    set({ riders: loadedRiders });
-    if (loadedRiders.length > 0) {
-      toast.success(`Synced ${loadedRiders.length} riders for ${eventName}`);
-    }
-  } catch (error) {
-    console.error("Error syncing event riders:", error);
-    toast.error("Failed to sync riders");
-  }
-},
-fetchEventResults: async (eventName) => {
   const ridersRef = collection(db, "riders");
   const q = query(ridersRef, where("eventName", "==", eventName));
   
@@ -998,38 +1010,6 @@ renameTrack: async (newTrackName) => {
         toast.error("Failed to rename track");
     }
   },
-
-syncSessionRiders: async () => {
-  const { eventName } = get();
-  if (!eventName) {
-    toast.error("No active event to sync!");
-    return;
-  }
-
-  set({ loading: true }); // Show a spinner
-  
-  try {
-    const ridersRef = collection(db, "riders");
-    const q = query(ridersRef, where("eventName", "==", eventName));
-    const querySnapshot = await getDocs(q);
-    
-    const freshRiders = querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    }));
-
-    set({ 
-      riders: freshRiders, 
-      loading: false 
-    });
-    
-    toast.success(`Synced ${freshRiders.length} riders from cloud`);
-  } catch (error) {
-    console.error("Sync failed:", error);
-    set({ loading: false });
-    toast.error("Sync failed. Check internet connection.");
-  }
-},
 categoryFilter: "ALL", 
 setCategoryFilter: (category) => set({ categoryFilter: category }),
 }));

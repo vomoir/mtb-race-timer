@@ -15,7 +15,6 @@ const LoginScreen = () => {
   const { 
     createEventWithTracks, 
     setTrack, 
-    syncEventRiders, 
     fetchEventResults,
     liveEvents,
     fetchLiveEvents,
@@ -48,7 +47,6 @@ const LoginScreen = () => {
         }
 
         await createEventWithTracks(upperEventName);
-        syncEventRiders(upperEventName);
 
         if (trackNameFromUrl) {
           setTrack(trackNameFromUrl);
@@ -70,7 +68,7 @@ const LoginScreen = () => {
       };
       initDeepLink();
     }
-  }, [searchParams, navigate, createEventWithTracks, setTrack, syncEventRiders, fetchEventResults, liveEvents, isAdmin]);
+  }, [searchParams, navigate, createEventWithTracks, setTrack, fetchEventResults, liveEvents, isAdmin]);
 
   const handleStart = async (name, eventPin = "") => {
     if (!name) return;
@@ -99,7 +97,6 @@ const LoginScreen = () => {
     }
     
     await createEventWithTracks(eventName, eventPin); 
-    syncEventRiders(eventName);
     navigate('/registration');
   };
 
@@ -109,7 +106,6 @@ const LoginScreen = () => {
     const isCorrect = await verifyPin(pendingEvent.name, pin);
     if (isCorrect || pin === "") { // Allow empty pin for guest access
       await createEventWithTracks(pendingEvent.name, pin);
-      syncEventRiders(pendingEvent.name);
       if (pendingEvent.track) setTrack(pendingEvent.track);
       
       setShowPinInput(false);
@@ -226,6 +222,25 @@ return (
                   Setting a PIN prevents unauthorized timing and changes.
                 </p>
               </div>
+            </div>
+
+            {/* Archives Link */}
+            <div className="mb-8">
+              <button 
+                onClick={() => navigate('/archives')}
+                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-slate-200 p-2 rounded-lg text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-all">
+                    <History size={18} />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-bold text-slate-700">Event Archives</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">View past race results</span>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-slate-300 group-hover:text-slate-600" />
+              </button>
             </div>
 
             {/* Global Admin Section */}
