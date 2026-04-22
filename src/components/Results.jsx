@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Trophy, Download, List } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
@@ -32,12 +33,32 @@ const triggerFileDownload = (content, fileName) => {
   document.body.removeChild(link);
 };
 
+const TabButton = ({ tabName, label, icon: Icon, activeTab, setActiveTab }) => {
+  return (
+    <button
+      onClick={() => setActiveTab(tabName)}
+      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-4 transition-colors ${
+        activeTab === tabName
+          ? 'text-yellow-600 border-yellow-600'
+          : 'text-slate-500 border-transparent hover:text-slate-800'
+      }`}
+    >
+      <Icon size={16} />
+      <span>{label}</span>
+    </button>
+  );
+};
+
 const Results = () => {
-  const { eventName, trackName, isLoading, riders, fetchEventResults } = useRaceStore();
+  const { eventName, trackName, isLoading, riders, fetchEventResults, isPaid } = useRaceStore();
   const { finishedRiders } = useRiderLists(riders);
   const [activeTab, setActiveTab] = useState("track");
 
   const exportCurrentTrackCSV = () => {
+    if (!isPaid) {
+      toast.error("CSV Export is a premium feature. Please activate this event.");
+      return;
+    }
     const currentTrackFinishers = finishedRiders.filter(r => r.trackName === trackName);
     if (currentTrackFinishers.length === 0) return;
 
@@ -50,6 +71,10 @@ const Results = () => {
   };
 
   const exportAllResultsCSV = async () => {
+    if (!isPaid) {
+      toast.error("CSV Export is a premium feature. Please activate this event.");
+      return;
+    }
     const eventRiders = await fetchEventResults(eventName);
     let csvContent = `EVENT,${eventName.toUpperCase()}\nDATE,${new Date().toLocaleDateString("en-AU")}\n\n`;
     const tracks = [...new Set(eventRiders.map(r => r.trackName))].sort();
@@ -92,28 +117,26 @@ const Results = () => {
     });
     triggerFileDownload(csvContent, `${eventName}_Full_Results_${new Date().toISOString().split('T')[0]}.csv`);
   };
-  
-  const TabButton = ({ tabName, label, icon: Icon }) => (
-    <button
-      onClick={() => setActiveTab(tabName)}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold border-b-4 transition-colors ${
-        activeTab === tabName
-          ? 'text-yellow-600 border-yellow-600'
-          : 'text-slate-500 border-transparent hover:text-slate-800'
-      }`}
-    >
-      <Icon size={16} />
-      <span>{label}</span>
-    </button>
-  );
 
   return (
     <div className="max-w-4xl mx-auto p-2 sm:p-4">
       <Card className="overflow-hidden">
         {/* --- Tabs --- */}
         <div className="flex bg-slate-50 border-b border-slate-200">
-          <TabButton tabName="track" label="Track Results" icon={List} />
-          <TabButton tabName="overall" label="Overall Standings" icon={Trophy} />
+          <TabButton 
+            tabName="track" 
+            label="Track Results" 
+            icon={List} 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+          />
+          <TabButton 
+            tabName="overall" 
+            label="Overall Standings" 
+            icon={Trophy} 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+          />
         </div>
 
         {/* --- Tab Content --- */}
@@ -128,14 +151,32 @@ const Results = () => {
                    <p className="text-sm text-slate-500">{finishedRiders.length} finishers</p>
                 </div>
                  <div className="flex gap-2">
-                   <button onClick={exportCurrentTrackCSV} disabled={finishedRiders.length === 0} className="flex-1 sm:flex-initial w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-sm font-bold px-4 py-2 rounded-lg">
-                     <Download size={16} /> Export Track
+                   <button 
+                     onClick={exportCurrentTrackCSV} 
+                     disabled={finishedRiders.length === 0} 
+                     className={`flex-1 sm:flex-initial w-full flex items-center justify-center gap-2 ${isPaid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-400'} disabled:bg-slate-300 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors`}
+                   >
+                     <Download size={16} /> {isPaid ? 'Export Track' : 'Export Locked'}
                    </button>
-                   <button onClick={exportAllResultsCSV} className="flex-1 sm:flex-initial w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
-                     <Download size={16} /> Export All
+                   <button 
+                     onClick={exportAllResultsCSV} 
+                     className={`flex-1 sm:flex-initial w-full flex items-center justify-center gap-2 ${isPaid ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-400'} text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors`}
+                   >
+                     <Download size={16} /> {isPaid ? 'Export All' : 'Export Locked'}
                    </button>
                  </div>
               </div>
+
+              {!isPaid && (
+                <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg flex items-center gap-3">
+                   <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+                     <Download size={16} />
+                   </div>
+                   <p className="text-xs text-amber-700 font-medium">
+                     CSV results export is locked for this event. <button onClick={() => window.location.reload()} className="underline font-bold">Activate now</button> to unlock full access.
+                   </p>
+                </div>
+              )}
 
               {isLoading ? <TableSkeleton /> : (
                 <>

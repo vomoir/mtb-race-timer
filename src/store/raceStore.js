@@ -36,6 +36,7 @@ export const useRaceStore = create((set, get) => ({
   eventName:  "",
   trackName: "NO TRACK",
   tracks: [],
+  isPaid: false,
   setTracks: (tracks) => set({ tracks }),
   isAdmin: localStorage.getItem('isAdmin') === 'true',
   setAdmin: (val) => {
@@ -208,7 +209,7 @@ export const useRaceStore = create((set, get) => ({
     }
   },
   
-  createEventWithTracks: async (eventName, pin = "") => {
+  createEventWithTracks: async (eventName, pin = "", isPaid = false) => {
     localStorage.setItem('eventName', eventName);
     // Clear old data but don't set eventName yet to avoid premature redirect
     set({ riders: [], trackName: "NO TRACK", tracks: [] });
@@ -231,7 +232,8 @@ export const useRaceStore = create((set, get) => ({
           createdAt: serverTimestamp(), 
           isCompleted: false,
           isPrivate,
-          pin: pin // In a real app, hash this!
+          pin: pin, // In a real app, hash this!
+          isPaid
         });
         newTracks.push(trackName);
       }
@@ -245,7 +247,8 @@ export const useRaceStore = create((set, get) => ({
         eventName, 
         tracks: newTracks, 
         trackName: firstTrack,
-        activeRaceId: `${formattedEvent}_${formattedTrack}`
+        activeRaceId: `${formattedEvent}_${formattedTrack}`,
+        isPaid
       });
       get().setAdmin(true); // Creator is always admin
       toast.success(`${DEFAULT_TRACK_COUNT} tracks created for event ${eventName}`);
@@ -253,6 +256,7 @@ export const useRaceStore = create((set, get) => ({
       const data = existingTracksSnapshot.docs[0].data();
       const isPrivate = data.isPrivate || false;
       const correctPin = data.pin || "";
+      const isPaidFromDb = data.isPaid || false;
 
       const existingTracks = existingTracksSnapshot.docs.map(doc => doc.data().trackName).sort();
       const firstTrack = existingTracks[0];
@@ -263,7 +267,8 @@ export const useRaceStore = create((set, get) => ({
         eventName, 
         tracks: existingTracks, 
         trackName: firstTrack,
-        activeRaceId: `${formattedEvent}_${formattedTrack}`
+        activeRaceId: `${formattedEvent}_${formattedTrack}`,
+        isPaid: isPaidFromDb
       });
 
       // If it's private and we don't have a valid pin session, we are NOT admin
@@ -337,7 +342,7 @@ export const useRaceStore = create((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Once payment is successful, create the event
-      await get().createEventWithTracks(eventData.name, eventData.pin);
+      await get().createEventWithTracks(eventData.name, eventData.pin, true);
       toast.success("Payment successful! Event activated.");
       return true;
     } catch (error) {

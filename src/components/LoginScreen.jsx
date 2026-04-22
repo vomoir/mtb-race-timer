@@ -188,6 +188,28 @@ return (
             </div>
             
             <SquarePayment onPaymentSuccess={handlePaymentSuccess} amount={2500} />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-slate-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-slate-400 font-bold tracking-widest">Or</span>
+              </div>
+            </div>
+
+            <button 
+              onClick={async () => {
+                await createEventWithTracks(pendingEvent.name, pendingEvent.pin, false);
+                setShowPayment(false);
+                setPendingEvent(null);
+                navigate('/registration');
+              }}
+              className="w-full bg-slate-100 text-slate-600 p-4 rounded-xl font-bold hover:bg-slate-200 transition-all border border-slate-200"
+            >
+              CONTINUE FOR FREE
+              <span className="block text-[10px] text-slate-400 font-normal mt-0.5">Basic features only. No CSV result exports.</span>
+            </button>
             
             <button 
               onClick={() => { setShowPayment(false); setPendingEvent(null); }}
