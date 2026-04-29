@@ -144,3 +144,34 @@ export const playBeep = (frequency = 880, duration = 0.1) => {
     console.warn("Audio beep failed (likely user interaction required):", e);
   }
 };
+
+/**
+ * Parses duration strings like "01:23.45", "00:01:23.45", or plain seconds "83.45" into milliseconds.
+ */
+export const parseDurationToMs = (str) => {
+  if (!str) return null;
+  const parts = str.split(":");
+  let ms = 0;
+
+  try {
+    if (parts.length === 3) {
+      // HH:MM:SS.cs
+      const [h, m, s] = parts;
+      ms += parseInt(h) * 3600000;
+      ms += parseInt(m) * 60000;
+      ms += parseFloat(s) * 1000;
+    } else if (parts.length === 2) {
+      // MM:SS.cs
+      const [m, s] = parts;
+      ms += parseInt(m) * 60000;
+      ms += parseFloat(s) * 1000;
+    } else {
+      // SS.cs
+      ms += parseFloat(str) * 1000;
+    }
+    return Math.round(ms);
+  } catch (e) {
+    console.error("Failed to parse duration:", str);
+    return null;
+  }
+};

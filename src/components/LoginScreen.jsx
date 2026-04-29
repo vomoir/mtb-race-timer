@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 const LoginScreen = () => {
   const [input, setInput] = useState('');
   const [pin, setPin] = useState('');
+  const [trackCount, setTrackCount] = useState('6');
   const [showPinInput, setShowPinInput] = useState(false);
   const [pendingEvent, setPendingEvent] = useState(null);
   
@@ -70,7 +71,7 @@ const LoginScreen = () => {
     }
   }, [searchParams, navigate, createEventWithTracks, setTrack, fetchEventResults, liveEvents, isAdmin]);
 
-  const handleStart = async (name, eventPin = "") => {
+  const handleStart = async (name, eventPin = "", initialTracks = 6) => {
     if (!name) return;
     if (name.length < 3) {
       toast.error("Event name must be at least 3 characters long");
@@ -96,7 +97,8 @@ const LoginScreen = () => {
         eventName = `${eventName} ${dateStamp}`;
     }
     
-    await createEventWithTracks(eventName, eventPin); 
+    const count = parseInt(initialTracks) || 6;
+    await createEventWithTracks(eventName, eventPin, count); 
     navigate('/registration');
   };
 
@@ -203,21 +205,33 @@ return (
                   value={input}
                   onChange={(e) => setInput(e.target.value.toUpperCase())}
                 />
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <input 
-                    className="flex-1 bg-white border border-blue-100 rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Set PIN (Optional)"
+                    className="w-full bg-white border border-blue-100 rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="PIN (Optional)"
                     maxLength={4}
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
                   />
-                  <button 
-                    onClick={() => handleStart(input, pin)}
-                    className="bg-blue-600 text-white p-4 sm:px-8 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
-                  >
-                    CREATE
-                  </button>
+                  <div className="relative">
+                    <input 
+                      type="number"
+                      min="1"
+                      max="20"
+                      className="w-full bg-white border border-blue-100 rounded-xl p-4 font-semibold focus:ring-2 focus:ring-blue-500 outline-none pr-12"
+                      placeholder="Tracks"
+                      value={trackCount}
+                      onChange={(e) => setTrackCount(e.target.value)}
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-blue-300 uppercase">Tracks</span>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => handleStart(input, pin, trackCount)}
+                  className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+                >
+                  CREATE EVENT <ArrowRight size={18} />
+                </button>
                 <p className="text-[10px] text-blue-400 font-bold text-center px-4 uppercase tracking-tighter">
                   Setting a PIN prevents unauthorized timing and changes.
                 </p>
