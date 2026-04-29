@@ -8,8 +8,8 @@ const TrackDialog = forwardRef(function TrackDialog(
   const inputRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
-    open() {
-      if (inputRef.current) inputRef.current.value = "";
+    open(initialValue = "") {
+      if (inputRef.current) inputRef.current.value = initialValue;
       dialogRef.current.showModal();
       setTimeout(() => inputRef.current?.focus(), 0);
     },

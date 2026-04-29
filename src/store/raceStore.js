@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
-import { getTime, formatDuration, playBeep } from "../utils/utils.js";
+import { getTime, formatDuration, playBeep, parseDurationToMs } from "../utils/utils.js";
 
 import {
   addDoc,
@@ -208,7 +208,7 @@ export const useRaceStore = create((set, get) => ({
     }
   },
   
-  createEventWithTracks: async (eventName, pin = "") => {
+  createEventWithTracks: async (eventName, pin = "", trackCount = DEFAULT_TRACK_COUNT) => {
     localStorage.setItem('eventName', eventName);
     // Clear old data but don't set eventName yet to avoid premature redirect
     set({ riders: [], trackName: "NO TRACK", tracks: [] });
@@ -222,7 +222,7 @@ export const useRaceStore = create((set, get) => ({
       const newTracks = [];
       const isPrivate = pin.length > 0;
       
-      for (let i = 1; i <= DEFAULT_TRACK_COUNT; i++) {
+      for (let i = 1; i <= trackCount; i++) {
         const trackName = `TRACK${i}`;
         const trackDocRef = doc(tracksCollectionRef);
         batch.set(trackDocRef, { 
@@ -248,7 +248,7 @@ export const useRaceStore = create((set, get) => ({
         activeRaceId: `${formattedEvent}_${formattedTrack}`
       });
       get().setAdmin(true); // Creator is always admin
-      toast.success(`${DEFAULT_TRACK_COUNT} tracks created for event ${eventName}`);
+      toast.success(`${trackCount} tracks created for event ${eventName}`);
     } else {
       const data = existingTracksSnapshot.docs[0].data();
       const isPrivate = data.isPrivate || false;
@@ -743,7 +743,38 @@ addRider: async (riderData) => {
     }
   },
  // Finish state
+ updateRiderTime: async (riderId, durationStr) => {
+   const ms = parseDurationToMs(durationStr);
+   if (ms === null) {
+     toast.error("Invalid time format. Use MM:SS.cs or HH:MM:SS.cs");
+     return;
+   }
+
+   const raceTimeStr = formatDuration(ms);
+   const updates = {
+     durationMs: ms,
+     raceTime: raceTimeStr,
+     status: "FINISHED" // Ensure they are marked finished if time is set
+   };
+
+   try {
+     const docRef = doc(db, "riders", riderId);
+     await updateDoc(docRef, updates);
+
+     set((state) => ({
+       riders: state.riders.map((r) =>
+         r.id === riderId ? { ...r, ...updates } : r
+       )
+     }));
+     toast.success("Rider time updated");
+   } catch (error) {
+     console.error("Failed to update rider time:", error);
+     toast.error("Failed to update time in cloud");
+   }
+ },
+
  handleFinish: async (rider) => {
+
     if (!rider) return;
     playBeep();
     set({ finishing: rider.id });

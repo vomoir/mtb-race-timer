@@ -1,11 +1,12 @@
-import React, { useState } from "react";
-import { Trophy, Download, List } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Trophy, Download, List, Edit2 } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { TableSkeleton } from '../components/LoadingStates';
 import { OverallResults } from "./OverallResults";
 import { Card } from "./Card";
+import TrackDialog from "./TrackDialog";
 
 const groupBy = (array, key) => array.reduce((acc, obj) => {
   const k = obj[key] || "Uncategorized";
@@ -33,9 +34,23 @@ const triggerFileDownload = (content, fileName) => {
 };
 
 const Results = () => {
-  const { eventName, trackName, isLoading, riders, fetchEventResults } = useRaceStore();
+  const { eventName, trackName, isLoading, riders, fetchEventResults, isAdmin, updateRiderTime } = useRaceStore();
   const { finishedRiders } = useRiderLists(riders);
   const [activeTab, setActiveTab] = useState("track");
+  const [editingRider, setEditingRider] = useState(null);
+  const dialogRef = useRef(null);
+
+  const onEditSubmit = (newTime) => {
+    if (editingRider) {
+      updateRiderTime(editingRider.id, newTime);
+      setEditingRider(null);
+    }
+  };
+
+  const handleEditClick = (rider) => {
+    setEditingRider(rider);
+    dialogRef.current.open(rider.raceTime);
+  };
 
   const exportCurrentTrackCSV = () => {
     const currentTrackFinishers = finishedRiders.filter(r => r.trackName === trackName);
@@ -142,16 +157,27 @@ const Results = () => {
                   {/* Mobile View: List of Cards */}
                   <div className="sm:hidden space-y-3">
                     {finishedRiders.map((rider, index) => (
-                       <div key={rider.id} className="bg-white p-3 rounded-lg border border-slate-200 flex items-center">
-                          <div className={`font-bold text-lg w-10 ${index === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>
+                       <div key={rider.id} className="bg-white p-3 rounded-lg border border-slate-200 flex items-center gap-3">
+                          <div className={`font-bold text-lg w-6 ${index === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>
                             {index === 0 ? <Trophy size={20} className="fill-yellow-500"/> : index + 1}
                           </div>
-                          <div className="flex-1">
-                             <p className="font-bold text-slate-800">#{rider.riderNumber} - {rider.firstName} {rider.lastName}</p>
-                             <p className="text-xs text-slate-500">{rider.category}</p>
+                          <div className="flex-1 min-w-0">
+                             <p className="font-bold text-slate-800 truncate">#{rider.riderNumber} - {rider.firstName}</p>
+                             <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">{rider.category}</p>
                           </div>
-                          <div className={`font-mono font-bold text-lg ${index === 0 ? 'text-green-600' : 'text-slate-700'}`}>
-                            {rider.raceTime}
+                          <div className="text-right flex items-center gap-2">
+                            <div className={`font-mono font-bold text-sm ${index === 0 ? 'text-green-600' : 'text-slate-700'}`}>
+                              {rider.raceTime}
+                            </div>
+                            {isAdmin && (
+                              <button 
+                                onClick={() => handleEditClick(rider)}
+                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                title="Edit Time"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                            )}
                           </div>
                        </div>
                     ))}
@@ -166,6 +192,7 @@ const Results = () => {
                           <th className="p-3">Rider</th>
                           <th className="p-3">Category</th>
                           <th className="p-3 text-right">Time</th>
+                          {isAdmin && <th className="p-3 w-16 text-center">Action</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -181,6 +208,17 @@ const Results = () => {
                             <td className={`p-3 text-right font-mono font-bold ${index === 0 ? "text-green-600" : "text-slate-700"}`}>
                               {rider.raceTime}
                             </td>
+                            {isAdmin && (
+                              <td className="p-3 text-center">
+                                <button 
+                                  onClick={() => handleEditClick(rider)}
+                                  className="inline-flex items-center justify-center p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                  title="Edit Time"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -199,6 +237,12 @@ const Results = () => {
           )}
         </div>
       </Card>
+      <TrackDialog 
+        ref={dialogRef} 
+        title={`Edit Time: Rider #${editingRider?.riderNumber}`} 
+        placeholder="MM:SS.cs" 
+        onSubmit={onEditSubmit} 
+      />
     </div>
   );
 };
