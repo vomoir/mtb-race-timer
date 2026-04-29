@@ -43,18 +43,18 @@ const TrackDialog = forwardRef(function TrackDialog(
           className="border p-2 w-full rounded"
         />
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-between mt-4">
           <button
             type="button"
             onClick={() => dialogRef.current.close()}
-            className="px-3 py-1 rounded bg-gray-300"
+            className="px-6 py-2 rounded bg-gray-200 text-gray-700 font-semibold"
           >
             Cancel
           </button>
 
           <button
             type="submit"
-            className="px-3 py-1 rounded bg-blue-600 text-white"
+            className="px-8 py-2 rounded bg-blue-600 text-white font-bold"
           >
             OK
           </button>

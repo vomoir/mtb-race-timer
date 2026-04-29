@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
-import { getTime, formatDuration } from "../utils/utils.js";
+import { getTime, formatDuration, playBeep } from "../utils/utils.js";
 
 import {
   addDoc,
@@ -614,6 +614,8 @@ addRider: async (riderData) => {
 
     if (!riderNumber || !riderNumber.trim()) return;
 
+    playBeep();
+
     const { riders, eventName, trackName, activeRaceId } = get();
     const effectiveRaceId = raceId || activeRaceId;
 
@@ -743,6 +745,7 @@ addRider: async (riderData) => {
  // Finish state
  handleFinish: async (rider) => {
     if (!rider) return;
+    playBeep();
     set({ finishing: rider.id });
 
     // Get Start Time in Milliseconds

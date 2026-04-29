@@ -41,20 +41,20 @@ const ConfirmDialog = forwardRef(function ConfirmDialog(
         <h3 className="text-lg font-bold text-slate-800">{config.title || title}</h3>
         <p className="text-slate-600">{config.message || message}</p>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-between mt-6">
           <button
             onClick={() => dialogRef.current.close()}
-            className="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 font-bold hover:bg-slate-300 transition-colors"
+            className="px-6 py-2 rounded-lg bg-slate-200 text-slate-700 font-bold hover:bg-slate-300 transition-colors"
           >
-            {cancelLabel}
+            {config.cancelLabel || cancelLabel}
           </button>
 
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition-colors"
+            className="px-8 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition-colors"
             autoFocus
           >
-            {confirmLabel}
+            {config.confirmLabel || confirmLabel}
           </button>
         </div>
       </div>

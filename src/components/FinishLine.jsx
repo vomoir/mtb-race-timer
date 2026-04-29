@@ -4,7 +4,7 @@ import { List, Clock, RefreshCw, Timer, Zap, Flag, Save, Trash2, ChevronDown, Ch
 import { Card } from "./Card";
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
-import { getTime, getTimeMs, getRiderOnTrack } from "../utils/utils.js";
+import { getTime, getTimeMs, getRiderOnTrack, playBeep } from "../utils/utils.js";
 import ConfirmDialog from "./ConfirmDialog";
 import TrackDialog from "./TrackDialog";
 import { TabButton } from "./starter/TabButton";
@@ -23,6 +23,7 @@ const FinishLine = () => {
   const [activeId, setActiveId] = useState(null);
 
   const handleCapture = () => {
+    playBeep();
     setPendingFinishes((prev) => [
       ...prev,
       {
