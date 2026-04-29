@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Play, RefreshCw, Users, Clock, CheckCircle } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
-import { formatTime } from "../utils/utils";
+import { formatTime, playBeep } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { getRiderWaiting } from "../utils/utils.js";
 import { CategoryFilter } from "./starter/CategoryFilter";

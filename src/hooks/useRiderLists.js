@@ -24,7 +24,7 @@ export function useRiderLists() {
   const ridersOnTrack = useMemo(() => {
     return currentTrackRiders
       .filter((r) => r.status === "ON_TRACK")
-      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+      .sort((a, b) => (a.startTimeMs || 0) - (b.startTimeMs || 0))
       .map((r) => ({
         ...r,
         // Using your existing calculation logic
