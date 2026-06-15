@@ -13,10 +13,10 @@ const FinishLine = () => {
   const {
     finishing, finishLogs, soloMode, soloNumber, setSoloNumber,
     setSoloMode, handleSoloStart, handleFinish, updateRiderStatus,
+    pendingFinishes, addPendingFinish, clearPendingFinish, handleWithdrawal
   } = useRaceStore();
   
   const [activeTab, setActiveTab] = useState("capture");
-  const [pendingFinishes, setPendingFinishes] = useState([]);
   const { ridersOnTrack, finishedRiders } = useRiderLists();
   const confirmDialog = useRef(null);
   const dialogRef = useRef(null);
@@ -24,15 +24,12 @@ const FinishLine = () => {
 
   const handleCapture = () => {
     playBeep();
-    setPendingFinishes((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        finishTime: getTime(),
-        finishTimeMs: getTimeMs(),
-        riderNumber: "",
-      },
-    ]);
+    addPendingFinish({
+      id: crypto.randomUUID(),
+      finishTime: getTime(),
+      finishTimeMs: getTimeMs(),
+      riderNumber: "",
+    });
   };
 
   const handlePendingSave = (pendingItem) => {
@@ -47,7 +44,7 @@ const FinishLine = () => {
         finishTimeMs: pendingItem.finishTimeMs,
       };
       handleFinish(finishedRider);
-      setPendingFinishes((prev) => prev.filter((p) => p.id !== pendingItem.id));
+      clearPendingFinish(pendingItem.id);
     } else {
       toast.error(`Rider #${pendingItem.riderNumber} is not on track or already finished!`);
     }
@@ -62,8 +59,8 @@ const FinishLine = () => {
       const item = pendingFinishes.find((p) => p.id === activeId);
       if (item) {
         const updatedItem = { ...item, riderNumber: val };
-        setPendingFinishes((prev) => prev.map((p) => (p.id === activeId ? updatedItem : p)));
-        handlePendingSave(updatedItem); // Attempt to save immediately
+        // We attempt to save immediately since we have the number now
+        handlePendingSave(updatedItem); 
       }
     }
     setActiveId(null);
@@ -85,23 +82,27 @@ const FinishLine = () => {
             <div className="space-y-4 animate-in fade-in">
               <button
                 onClick={handleCapture}
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-xl shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-transform"
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-10 rounded-xl shadow-lg flex items-center justify-center gap-4 active:scale-95 transition-transform"
               >
-                <Timer size={24} />
-                <span className="text-lg font-black uppercase tracking-wider">Capture Finish</span>
+                <Timer size={32} />
+                <span className="text-2xl font-black uppercase tracking-wider">Capture Finish</span>
               </button>
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {pendingFinishes.map((item) => (
+                {pendingFinishes.map((item, index) => (
                   <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-100">
                     <div className="bg-slate-800 text-white font-mono rounded px-2 py-1 text-sm font-bold">{item.finishTime}</div>
                     <button
-                      onClick={() => { setActiveId(item.id); dialogRef.current.open(); }}
+                      onClick={() => { 
+                        setActiveId(item.id); 
+                        const suggestedRider = ridersOnTrack[index]?.riderNumber || "";
+                        dialogRef.current.open(suggestedRider); 
+                      }}
                       className="flex-1 h-10 font-bold text-lg text-center border border-slate-300 rounded bg-white hover:bg-slate-50"
                     >
                       {item.riderNumber || <span className="text-slate-300">Bib #</span>}
                     </button>
                     <button onClick={() => handlePendingSave(item)} className="p-2 rounded text-white bg-green-500 hover:bg-green-600 disabled:bg-slate-300" disabled={!item.riderNumber}><Save size={16} /></button>
-                    <button onClick={() => setPendingFinishes(prev => prev.filter(p => p.id !== item.id))} className="p-2 rounded bg-slate-200 text-slate-500 hover:bg-slate-300"><Trash2 size={16} /></button>
+                    <button onClick={() => clearPendingFinish(item.id)} className="p-2 rounded bg-slate-200 text-slate-500 hover:bg-slate-300"><Trash2 size={16} /></button>
                   </div>
                 ))}
               </div>
@@ -136,7 +137,7 @@ const FinishLine = () => {
                        <button onClick={() => handleDirectFinish(rider)} disabled={finishing === rider.riderNumber} className="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2 rounded-lg text-sm w-24 text-center">
                          {finishing === rider.riderNumber ? <RefreshCw className="animate-spin mx-auto" /> : "FINISH"}
                        </button>
-                        <button onClick={() => confirmDialog.current.open({ title: "Confirm DNF", message: `Mark rider #${rider.riderNumber} as DNF?`, onConfirm: () => updateRiderStatus(rider.id, 'DNF') })} className="bg-slate-400 hover:bg-slate-500 text-white font-bold px-3 py-2 rounded-lg text-xs">DNF</button>
+                        <button onClick={() => confirmDialog.current.open({ title: "Confirm DNF", message: `Mark rider #${rider.riderNumber} as DNF?`, onConfirm: () => handleWithdrawal(rider.id, 'DNF') })} className="bg-slate-400 hover:bg-slate-500 text-white font-bold px-3 py-2 rounded-lg text-xs">DNF</button>
                      </div>
                    </div>
                 ))}

@@ -320,7 +320,7 @@ export const useRaceStore = create((set, get) => ({
 
   // setTrackName: (name) => set({ trackName: name }), 
   setTrack: async (track) => {
-    const { eventName, tracks, isAdmin } = get();
+    const { eventName, tracks, isAdmin,riders } = get();
     const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
     const formattedTrack = track.replace(/\s+/g, '-').toUpperCase();
     const newActiveRaceId = `${formattedEvent}_${formattedTrack}`;
@@ -340,6 +340,13 @@ export const useRaceStore = create((set, get) => ({
           isCompleted: false 
         });
         
+        const uniqueRiders = Array.from(
+          new Map(riders.map(r => [r.riderNumber, r])).values()
+        );
+   
+        if (uniqueRiders.length > 0) {
+          await get()._importRidersToTrack(uniqueRiders, eventName, track, true);
+        }        
         // Update local tracks array
         const updatedTracks = [...tracks, track].sort();
         set({ tracks: updatedTracks });
@@ -741,6 +748,15 @@ addRider: async (riderData) => {
       console.error(`Failed to update rider to ${newStatus}:`, error);
       toast.error("Failed to update status. Check rider number.");
     }
+  },
+
+  handleWithdrawal: async (riderId, status) => {
+    // status is 'DNS' or 'DNF'
+    const { updateRiderStatus } = get();
+    await updateRiderStatus(riderId, status);
+    // Add a consolidated log entry for the event summary
+    saveToLocalBackup("eventLogs", { riderId, status, time: getTime() });
+    toast.success(`Rider marked as ${status}`);
   },
  // Finish state
  updateRiderTime: async (riderId, durationStr) => {
