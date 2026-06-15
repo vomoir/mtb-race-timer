@@ -749,6 +749,15 @@ addRider: async (riderData) => {
       toast.error("Failed to update status. Check rider number.");
     }
   },
+
+  handleWithdrawal: async (riderId, status) => {
+    // status is 'DNS' or 'DNF'
+    const { updateRiderStatus } = get();
+    await updateRiderStatus(riderId, status);
+    // Add a consolidated log entry for the event summary
+    saveToLocalBackup("eventLogs", { riderId, status, time: getTime() });
+    toast.success(`Rider marked as ${status}`);
+  },
  // Finish state
  updateRiderTime: async (riderId, durationStr) => {
    const ms = parseDurationToMs(durationStr);

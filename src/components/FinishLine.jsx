@@ -101,7 +101,7 @@ const FinishLine = () => {
                       {item.riderNumber || <span className="text-slate-300">Bib #</span>}
                     </button>
                     <button onClick={() => handlePendingSave(item)} className="p-2 rounded text-white bg-green-500 hover:bg-green-600 disabled:bg-slate-300" disabled={!item.riderNumber}><Save size={16} /></button>
-                    <button onClick={() => setPendingFinishes(prev => prev.filter(p => p.id !== item.id))} className="p-2 rounded bg-slate-200 text-slate-500 hover:bg-slate-300"><Trash2 size={16} /></button>
+                    <button onClick={() => clearPendingFinish(item.id)} className="p-2 rounded bg-slate-200 text-slate-500 hover:bg-slate-300"><Trash2 size={16} /></button>
                   </div>
                 ))}
               </div>
@@ -136,7 +136,7 @@ const FinishLine = () => {
                        <button onClick={() => handleDirectFinish(rider)} disabled={finishing === rider.riderNumber} className="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2 rounded-lg text-sm w-24 text-center">
                          {finishing === rider.riderNumber ? <RefreshCw className="animate-spin mx-auto" /> : "FINISH"}
                        </button>
-                        <button onClick={() => confirmDialog.current.open({ title: "Confirm DNF", message: `Mark rider #${rider.riderNumber} as DNF?`, onConfirm: () => updateRiderStatus(rider.id, 'DNF') })} className="bg-slate-400 hover:bg-slate-500 text-white font-bold px-3 py-2 rounded-lg text-xs">DNF</button>
+                        <button onClick={() => confirmDialog.current.open({ title: "Confirm DNF", message: `Mark rider #${rider.riderNumber} as DNF?`, onConfirm: () => handleWithdrawal(rider.id, 'DNF') })} className="bg-slate-400 hover:bg-slate-500 text-white font-bold px-3 py-2 rounded-lg text-xs">DNF</button>
                      </div>
                    </div>
                 ))}

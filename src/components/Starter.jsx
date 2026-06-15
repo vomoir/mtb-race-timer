@@ -18,6 +18,7 @@ const StarterComponent = () => {
     setRiderNumber,
     handleStart,
     updateRiderStatus,
+    handleWithdrawal,
     categoryFilter
   } = useRaceStore();
 
@@ -100,7 +101,7 @@ const StarterComponent = () => {
                       title: "Mark DNS",
                       message: `Are you sure you want to mark rider #${riderNumber} as DNS (Did Not Start)?`,
                       onConfirm: () => {
-                        updateRiderStatus(riderNumber, 'DNS');
+                        handleWithdrawal(riderNumber, 'DNS');
                         setRiderNumber("");
                       }
                     });
