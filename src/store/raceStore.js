@@ -320,7 +320,7 @@ export const useRaceStore = create((set, get) => ({
 
   // setTrackName: (name) => set({ trackName: name }), 
   setTrack: async (track) => {
-    const { eventName, tracks, isAdmin } = get();
+    const { eventName, tracks, isAdmin,riders } = get();
     const formattedEvent = eventName.replace(/\s+/g, '-').toUpperCase();
     const formattedTrack = track.replace(/\s+/g, '-').toUpperCase();
     const newActiveRaceId = `${formattedEvent}_${formattedTrack}`;
@@ -340,6 +340,13 @@ export const useRaceStore = create((set, get) => ({
           isCompleted: false 
         });
         
+        const uniqueRiders = Array.from(
+          new Map(riders.map(r => [r.riderNumber, r])).values()
+        );
+   
+        if (uniqueRiders.length > 0) {
+          await get()._importRidersToTrack(uniqueRiders, eventName, track, true);
+        }        
         // Update local tracks array
         const updatedTracks = [...tracks, track].sort();
         set({ tracks: updatedTracks });
