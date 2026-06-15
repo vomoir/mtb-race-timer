@@ -397,7 +397,7 @@ export const useRaceStore = create((set, get) => ({
   // Unique ID for DB filtering (combines both to prevent overlaps)  
 setSession: async (event, track) => {
   const newActiveRaceId = `${event.replace(/\s+/g, '-')}_${track.replace(/\s+/g, '-')}`.toUpperCase();
-  
+
   // 1. Update the session identifiers
   set({ 
     eventName: event, 
@@ -410,31 +410,31 @@ setSession: async (event, track) => {
   // Using the 'get' helper ensures we have the latest state
   await get().fetchRidersForSession(); 
 },
-  queueStart: (riderData) => {
-    const existing = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
-    existing.push(riderData);
-    localStorage.setItem("pendingStarts", JSON.stringify(existing));
-  },
-  syncPendingStarts: async () => {
-    const pending = JSON.parse(localStorage.getItem("pendingStarts") || "[]");
-    if (pending.length === 0) return;
 
-    for (const rider of pending) {
-      // Use the new 'riders' collection and try to maintain ID consistency
-      if (rider.raceId && rider.riderNumber) {
-        const customId = `${rider.raceId}_${rider.riderNumber}`;
-        const docRef = doc(db, "riders", customId);
-        await setDoc(docRef, rider, { merge: true });
-      } else {
-        // Fallback for data without ID components
-        await addDoc(collection(db, "riders"), rider);
-      }
-    }
-    localStorage.removeItem("pendingStarts");
-  },
+pendingFinishes: getLocalBackup("pendingFinishes") || [],
+addPendingFinish: (finishData) => {
+  const { pendingFinishes } = get();
+  const newPending = [...pendingFinishes, finishData];
+  saveToLocalBackup("pendingFinishes", newPending);
+  set({ pendingFinishes: newPending });
+},
+clearPendingFinish: (id) => {
+  const { pendingFinishes } = get();
+  const filtered = pendingFinishes.filter(p => p.id !== id);
+  saveToLocalBackup("pendingFinishes", filtered);
+  set({ pendingFinishes: filtered });
+},
+updatePendingFinish: (id, riderNumber) => {
+  const { pendingFinishes } = get();
+  const newPending = pendingFinishes.map(p => 
+    p.id === id ? { ...p, riderNumber } : p
+  );
+  saveToLocalBackup("pendingFinishes", newPending);
+  set({ pendingFinishes: newPending });
+},
 
-  // Auth state
-  user: null,
+// Auth state
+user: null,
   authLoading: true,
 
   setActiveRaceId: (id) => set({ activeRaceId: id }),
