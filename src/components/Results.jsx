@@ -1,10 +1,11 @@
 import React, { useState, useRef } from "react";
-import { Trophy, Download, List, Edit2 } from "lucide-react";
+import { Trophy, Download, List, Edit2, AlertCircle } from "lucide-react";
 
 import { useRaceStore } from "../store/raceStore";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { TableSkeleton } from '../components/LoadingStates';
 import { OverallResults } from "./OverallResults";
+import { NonFinishers } from "./NonFinishers";
 import { Card } from "./Card";
 import TrackDialog from "./TrackDialog";
 
@@ -38,7 +39,7 @@ const Results = () => {
   const { finishedRiders } = useRiderLists(riders);
   const [activeTab, setActiveTab] = useState("track");
   const [editingRider, setEditingRider] = useState(null);
-  const dialogRef = useRef(null);
+  const editTimeDialogRef = useRef(null);
 
   const onEditSubmit = (newTime) => {
     if (editingRider) {
@@ -49,7 +50,7 @@ const Results = () => {
 
   const handleEditClick = (rider) => {
     setEditingRider(rider);
-    dialogRef.current.open(rider.raceTime);
+    editTimeDialogRef.current.open(rider.raceTime);
   };
 
   const exportCurrentTrackCSV = () => {
@@ -129,6 +130,7 @@ const Results = () => {
         <div className="flex bg-slate-50 border-b border-slate-200">
           <TabButton tabName="track" label="Track Results" icon={List} />
           <TabButton tabName="overall" label="Overall Standings" icon={Trophy} />
+          <TabButton tabName="pending" label="Non-Finishers" icon={AlertCircle} />
         </div>
 
         {/* --- Tab Content --- */}
@@ -235,10 +237,16 @@ const Results = () => {
               <OverallResults />
             </div>
           )}
+
+          {activeTab === 'pending' && (
+            <div className="animate-in fade-in">
+              <NonFinishers />
+            </div>
+          )}
         </div>
       </Card>
       <TrackDialog 
-        ref={dialogRef} 
+        ref={editTimeDialogRef} 
         title={`Edit Time: Rider #${editingRider?.riderNumber}`} 
         placeholder="MM:SS.cs" 
         onSubmit={onEditSubmit} 
