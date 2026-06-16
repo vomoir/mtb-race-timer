@@ -111,35 +111,35 @@ export const OverallResults = () => {
                 <span className="text-xs font-bold text-slate-400 bg-slate-200 px-2 py-1 rounded-full">{standings.length} Riders</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50/50 text-slate-500 font-medium border-b border-slate-100">
+                <table className="w-full text-left text-sm border-separate border-spacing-0">
+                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest border-b border-slate-200">
                     <tr>
-                      <th className="px-6 py-3 w-16">Rank</th>
-                      <th className="px-6 py-3">Rider</th>
-                      <th className="px-6 py-3 text-center">Stages</th>
-                      <th className="px-6 py-3 text-right">Total Time</th>
+                      <th className="px-3 sm:px-6 py-3 w-16 border-b border-slate-200 whitespace-nowrap">Rank</th>
+                      <th className="sticky left-0 z-20 bg-slate-50 px-3 sm:px-6 py-3 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Rider</th>
+                      <th className="px-3 sm:px-6 py-3 text-center border-b border-slate-200 whitespace-nowrap">Stages</th>
+                      <th className="px-3 sm:px-6 py-3 text-right border-b border-slate-200 whitespace-nowrap">Total Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {standings.map((rider, index) => (
-                      <tr key={rider.riderNumber} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-3">
+                      <tr key={rider.riderNumber} className="hover:bg-slate-50 transition-colors group">
+                        <td className="px-3 sm:px-6 py-3">
                           {index === 0 ? (
                             <Trophy size={16} className="text-yellow-500 fill-yellow-500" />
                           ) : (
                             <span className="font-bold text-slate-400 ml-1">{index + 1}</span>
                           )}
                         </td>
-                        <td className="px-6 py-3">
-                          <div className="font-bold text-slate-800">{rider.name}</div>
-                          <div className="text-xs text-slate-400">#{rider.riderNumber}</div>
+                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 px-3 sm:px-6 py-3 border-r border-slate-200 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                          <div className="font-bold text-slate-800 whitespace-nowrap">{rider.name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono font-bold tracking-tighter">BIB #{rider.riderNumber}</div>
                         </td>
-                        <td className="px-6 py-3 text-center">
+                        <td className="px-3 sm:px-6 py-3 text-center">
                           <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded font-mono text-xs font-bold">
                             {rider.stagesCount}
                           </span>
                         </td>
-                        <td className="px-6 py-3 text-right font-mono font-bold text-slate-900">
+                        <td className="px-3 sm:px-6 py-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                           {formatDuration(rider.totalMs)}
                         </td>
                       </tr>

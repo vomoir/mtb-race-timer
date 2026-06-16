@@ -89,32 +89,32 @@ export const NonFinishers = () => {
         Use this to identify riders who have retired or are still out on course.
       </p>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm border-separate border-spacing-0">
             <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">Rider</th>
-                <th className="px-6 py-4">Category</th>
+                <th className="sticky left-0 z-20 bg-slate-50 px-3 sm:px-6 py-4 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Rider</th>
+                <th className="px-3 sm:px-6 py-4 border-b border-slate-200 whitespace-nowrap">Category</th>
                 {sortedTracks.map(track => (
-                  <th key={track} className="px-4 py-4 text-center whitespace-nowrap">{track}</th>
+                  <th key={track} className="px-3 sm:px-4 py-4 text-center whitespace-nowrap border-b border-slate-200">{track}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {nonFinishers.map(rider => (
-                <tr key={`${rider.riderNumber}-${rider.category}`} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-800">{rider.name}</div>
+                <tr key={`${rider.riderNumber}-${rider.category}`} className="hover:bg-slate-50 transition-colors group">
+                  <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 px-3 sm:px-6 py-3 border-r border-slate-200 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                    <div className="font-bold text-slate-800 whitespace-nowrap">{rider.name}</div>
                     <div className="text-[10px] text-slate-400 font-mono font-bold tracking-tighter">BIB #{rider.riderNumber}</div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[10px] font-black uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                  <td className="px-3 sm:px-6 py-3">
+                    <span className="text-[10px] font-black uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded whitespace-nowrap">
                       {rider.category}
                     </span>
                   </td>
                   {sortedTracks.map(track => (
-                    <td key={track} className="px-4 py-4 text-center">
+                    <td key={track} className="px-3 sm:px-4 py-3 text-center">
                       <div className="flex justify-center">
                         {getStatusIcon(rider.tracks[track])}
                       </div>

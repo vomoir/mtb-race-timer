@@ -134,7 +134,7 @@ const Results = () => {
         </div>
 
         {/* --- Tab Content --- */}
-        <div className="p-4 sm:p-6">
+        <div className="p-2 sm:p-6">
           {activeTab === 'track' && (
             <div className="space-y-4 animate-in fade-in">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
