@@ -1,13 +1,14 @@
 import React, { useRef, useState } from "react";
 import { Play, RefreshCw, Users, Clock, CheckCircle } from "lucide-react";
 import { useRaceStore } from "../store/raceStore";
-import { formatTime, playBeep } from "../utils/utils";
+import { formatTime } from "../utils/utils";
 import { useRiderLists } from "../hooks/useRiderLists";
 import { getRiderWaiting } from "../utils/utils.js";
 import { CategoryFilter } from "./starter/CategoryFilter";
 import ConfirmDialog from "./ConfirmDialog";
 import { Card } from "./Card";
 import { TabButton } from "./starter/TabButton";
+import { PacingTimer } from "./starter/PacingTimer";
 
 const StarterComponent = () => {
   const {
@@ -17,7 +18,6 @@ const StarterComponent = () => {
     localLogs,
     setRiderNumber,
     handleStart,
-    updateRiderStatus,
     handleWithdrawal,
     categoryFilter
   } = useRaceStore();
@@ -118,6 +118,7 @@ const StarterComponent = () => {
                   {loading ? <RefreshCw className="animate-spin" /> : 'START'}
                 </button>
               </div>
+              <PacingTimer />
             </form>
           )}
 
