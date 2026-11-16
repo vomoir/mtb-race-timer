@@ -358,7 +358,8 @@ export const useRaceStore = create((set, get) => ({
 
     set({ 
       trackName: track,
-      activeRaceId: newActiveRaceId
+      activeRaceId: newActiveRaceId,
+      lastStarted: null
     });
     // Trigger fetch for the new track's riders
     get().fetchRidersForSession();
@@ -578,6 +579,7 @@ addRider: async (riderData) => {
     return null;
   })(),
   localLogs: getLocalBackup("starts"),
+  resetPacingTimer: () => set({ lastStarted: null }),
 
   activeTab: "import",
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -655,7 +657,7 @@ addRider: async (riderData) => {
 
     // Optimistically update lastStarted so timer resets immediately
     set({
-      lastStarted: { riderNumber, time: nowIso, timestamp: nowMs },
+      lastStarted: { riderNumber, time: nowIso, timestamp: nowMs, raceId: effectiveRaceId },
     });
 
     try {
@@ -666,7 +668,7 @@ addRider: async (riderData) => {
       set((state) => ({
         riders: state.riders.map((r) => r.id === docId ? { ...r, ...startData } : r),
         loading: false,
-        lastStarted: { riderNumber, time: nowIso, timestamp: nowMs },
+        lastStarted: { riderNumber, time: nowIso, timestamp: nowMs, raceId: effectiveRaceId },
         localLogs: getLocalBackup("starts"),
       }));
 
